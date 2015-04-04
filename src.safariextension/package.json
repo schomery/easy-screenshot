@@ -1,7 +1,7 @@
 {
   "fullName": "Easy Screenshot",
   "name": "iescreenshot",
-  "description": "Easy Screenshot is an easy to use screen capture tool. Simply press one of the context menu items to capture entire or a portion of your screen.",
+  "description": "Easy Screenshot is an easy-to-use screen capturing tool from right-click context menu.",
   "id": "jid0-SnuIiIyRmNnMhukLu6VK8DQkq12",
   "license": "mozilla public license 1.1",
   "version": "0.1.0",

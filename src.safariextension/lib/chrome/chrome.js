@@ -13,36 +13,6 @@ app.storage = {
   }
 };
 
-app.get = function (url, headers, data) {
-  var xhr = new XMLHttpRequest();
-  var d = Promise.defer();
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === 4) {
-      if (xhr.status >= 400) {
-        var e = new Error(xhr.statusText);
-        e.status = xhr.status;
-        d.reject(e);
-      }
-      else {
-        d.resolve(xhr.responseText);
-      }
-    }
-  };
-  xhr.open(data ? 'POST' : 'GET', url, true);
-  for (var id in headers) {
-    xhr.setRequestHeader(id, headers[id]);
-  }
-  if (data) {
-    var arr = [];
-    for (var e in data) {
-      arr.push(e + '=' + data[e]);
-    }
-    data = arr.join('&');
-  }
-  xhr.send(data ? data : '');
-  return d.promise;
-};
-
 app.content_script = {
   send: function (id, data, global) {
     var options = global ? {} : {active: true, currentWindow: true};
@@ -95,18 +65,18 @@ app.version = function () {
 
 app.timer = window;
 
-app.screenshot = function (left, top, width, height) {
+app.screenshot = function (left, top, width, height, devicePixelRatio) {
   var d = Promise.defer();
-  left = left  * window.devicePixelRatio;
-  top = top  * window.devicePixelRatio;
-  width = width  * window.devicePixelRatio;
-  height = height  * window.devicePixelRatio;
+  left = left  * devicePixelRatio;
+  top = top  * devicePixelRatio;
+  width = width  * devicePixelRatio;
+  height = height  * devicePixelRatio;
 
   chrome.tabs.query({
     active: true,
     currentWindow: true
   }, function (tab) {
-    chrome.tabs.captureVisibleTab(tab.windowId, function (dataUrl) {
+    chrome.tabs.captureVisibleTab(tab.windowId, {format: 'png'}, function (dataUrl) {
       var canvas = document.createElement('canvas');
       var ctx = canvas.getContext('2d');
       var img = new Image();

@@ -30,7 +30,7 @@ function part () {
   app.content_script.send('capture');
 }
 app.content_script.receive('capture', function (obj) {
-  app.screenshot(obj.left, obj.top, obj.width, obj.height).then(function (canvas) {
+  app.screenshot(obj.left, obj.top, obj.width, obj.height, obj.devicePixelRatio).then(function (canvas) {
     app.download(canvas.toDataURL(), 'screenshot.png');
   });
 });

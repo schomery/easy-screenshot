@@ -7,13 +7,13 @@
 	<key>Builder Version</key>
 	<string>10600.4.10.7</string>
 	<key>CFBundleDisplayName</key>
-	<string>Reverse Image Search Based on TinEye</string>
+	<string>Easy Screenshot</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.mybrowseraddon.itrisearch</string>
+	<string>com.mybrowseraddon.screenshot</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>0.1.1</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>Chrome</key>
@@ -22,19 +22,6 @@
 		<real>5242880</real>
 		<key>Global Page</key>
 		<string>lib/safari/background.html</string>
-		<key>Toolbar Items</key>
-		<array>
-			<dict>
-				<key>Identifier</key>
-				<string>toolbarbutton</string>
-				<key>Image</key>
-				<string>data/icons/16.png</string>
-				<key>Label</key>
-				<string>toolbar</string>
-				<key>Popover</key>
-				<string>popup</string>
-			</dict>
-		</array>
 	</dict>
 	<key>Content</key>
 	<dict>
@@ -51,9 +38,9 @@
 		</array>
 	</dict>
 	<key>Description</key>
-	<string>description</string>
+	<string>Easy Screenshot is an easy-to-use screen capturing tool from right-click context menu</string>
 	<key>DeveloperIdentifier</key>
-	<string>2C3W8RZ8ND</string>
+	<string>KGRSEG9P68</string>
 	<key>ExtensionInfoDictionaryVersion</key>
 	<string>1.0</string>
 	<key>Permissions</key>
@@ -66,6 +53,8 @@
 			<string>All</string>
 		</dict>
 	</dict>
+	<key>Update Manifest URL</key>
+	<string>https://raw.githubusercontent.com/schomery/easy-screenshot/master/src.safariextension/update.plist</string>
 	<key>Website</key>
 	<string>http://mybrowseraddon.com/image-search.html</string>
 </dict>

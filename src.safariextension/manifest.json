@@ -1,14 +1,12 @@
 {
   "name": "Easy Screenshot",
   "short_name": "iescreenshot",
-  "description": "Easy Screenshot is an easy to use screen capture tool. Simply press one of the context menu items to capture entire or a portion of your screen.",
+  "description": "Easy Screenshot is an easy-to-use screen capturing tool from right-click context menu.",
   "author": "Jeremy Schomery",
   "version": "0.1.0",
   "manifest_version": 2,
   "permissions": [
-    "storage",
     "tabs",
-    "notifications",
     "background",
     "contextMenus",
     "<all_urls>"
@@ -23,7 +21,7 @@
       "css": ["data/content_script/inject.css"],
       "js": ["data/content_script/inject.js"],
       "run_at": "document_start",
-      "all_frames": true
+      "all_frames": false
     }
   ],
   "homepage_url": "http://mybrowseraddon.com/screenshot.html",

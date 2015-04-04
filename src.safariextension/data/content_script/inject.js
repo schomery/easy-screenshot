@@ -82,7 +82,8 @@ var capture = (function () {
       left: left + 1,
       top: top + 1,
       width: width - 2,
-      height: height - 2
+      height: height - 2,
+      devicePixelRatio: window.devicePixelRatio
     });
     guide.remove();
     capture.remove();
@@ -111,13 +112,15 @@ var capture = (function () {
       document.removeEventListener('mousedown', mousedown, false);
       document.removeEventListener('mousemove', update, false);
       document.removeEventListener('mouseup', remove, false);
-      box.parentNode.removeChild(box);
+      if (box && box.parentNode) {
+        box.parentNode.removeChild(box);
+      }
     }
   };
 })();
 
 var guide = (function () {
-  var guide1, guide2;
+  var guide1, guide2, guide3;
   function position (left, top) {
     guide1.style.width = left + 'px';
     guide2.style.height = top + 'px';
@@ -129,8 +132,11 @@ var guide = (function () {
     install: function () {
       guide1 = document.createElement('div');
       guide2 = document.createElement('div');
+      guide3 = document.createElement('div');
       guide1.setAttribute('class', 'itrisearch-guide-1');
       guide2.setAttribute('class', 'itrisearch-guide-2');
+      guide3.setAttribute('class', 'itrisearch-guide-3');
+      document.body.appendChild(guide3);
       document.body.appendChild(guide1);
       document.body.appendChild(guide2);
       document.addEventListener('mousemove', update, false);
@@ -142,6 +148,9 @@ var guide = (function () {
       }
       if (guide2 && guide2.parentNode) {
         guide2.parentNode.removeChild(guide2);
+      }
+      if (guide3 && guide3.parentNode) {
+        guide3.parentNode.removeChild(guide3);
       }
       capture.remove();
     }

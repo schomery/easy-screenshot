@@ -18,7 +18,6 @@ var self          = require('sdk/self'),
 
 Cu.import('resource://gre/modules/Promise.jsm');
 
-
 exports.content_script = (function () {
   var workers = [], content_script_arr = [];
   pageMod.PageMod({
@@ -61,11 +60,6 @@ exports.content_script = (function () {
     }
   };
 })();
-
-
-
-
-
 
 exports.storage = {
   read: function (id) {
