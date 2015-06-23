@@ -4,7 +4,7 @@
   "description": "Easy Screenshot is an easy-to-use screen capturing tool from right-click context menu.",
   "id": "jid0-SnuIiIyRmNnMhukLu6VK8DQkq12",
   "license": "mozilla public license 1.1",
-  "version": "0.1.0",
+  "version": "0.1.0.2",
   "author": "Jeremy Schomery",
   "lib": "lib",
   "main": "common",

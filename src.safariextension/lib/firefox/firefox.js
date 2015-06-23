@@ -109,7 +109,9 @@ exports.context_menu = {
       label: label,
       image: data.url(img),
       items: arr.map(addOne),
-      context: contextMenu.PredicateContext(() => true),
+      context: contextMenu.PredicateContext(function (context) {
+        return context.documentURL.indexOf('http') !== -1;
+      })
     });
   }
 };

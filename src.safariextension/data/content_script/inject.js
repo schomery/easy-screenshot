@@ -83,7 +83,8 @@ var capture = (function () {
       top: top + 1,
       width: width - 2,
       height: height - 2,
-      devicePixelRatio: window.devicePixelRatio
+      devicePixelRatio: window.devicePixelRatio,
+      title: document.title
     });
     guide.remove();
     capture.remove();
@@ -179,4 +180,7 @@ background.receive('capture', function () {
   guide.install();
   capture.install();
   monitor.install();
+});
+background.receive('title', function () {
+  background.send('title', document.title);
 });

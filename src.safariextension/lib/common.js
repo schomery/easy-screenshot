@@ -20,18 +20,32 @@ if (isFirefox) {
   }
 })();
 
-function full () {
-  app.screenshot().then(function (canvas) {
-    app.download(canvas.toDataURL(), 'screenshot.png');
-  });
+function name (title) {
+  return title
+    .replace(/\+/g, ' ')
+    .replace(/[:\?\¿]/g, '')
+    .replace(/[\\\/]/g, '-')
+    .replace(/[\*]/g, '^')
+    .replace(/[\"]/g, "'")
+    .replace(/[\<]/g, '[')
+    .replace(/[\>]/g, ']')
+    .replace(/[|]/g, '-');
 }
+function full () {
+  app.content_script.send('title');
+}
+app.content_script.receive('title', function (title) {
+  app.screenshot().then(function (canvas) {
+    app.download(canvas.toDataURL(), name(title) + '.png');
+  });
+});
 
 function part () {
   app.content_script.send('capture');
 }
 app.content_script.receive('capture', function (obj) {
   app.screenshot(obj.left, obj.top, obj.width, obj.height, obj.devicePixelRatio).then(function (canvas) {
-    app.download(canvas.toDataURL(), 'screenshot.png');
+    app.download(canvas.toDataURL(), name(obj.title) + '.png');
   });
 });
 
