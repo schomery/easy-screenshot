@@ -31,12 +31,21 @@ function name (title) {
     .replace(/[\>]/g, ']')
     .replace(/[|]/g, '-');
 }
-function full () {
-  app.content_script.send('title');
+function visual () {
+  app.content_script.send('visual');
 }
-app.content_script.receive('title', function (title) {
-  app.screenshot().then(function (canvas) {
-    app.download(canvas.toDataURL(), name(title) + '.png');
+app.content_script.receive('visual', function (obj) {
+  app.screenshot().then(function (dataURL) {
+    app.download(dataURL, name(obj.title) + '.png');
+  });
+});
+
+function entire () {
+  app.content_script.send('entire');
+}
+app.content_script.receive('entire', function (obj) {
+  app.screenshot(-obj.scrollX, -obj.scrollY, obj.maxWidth, obj.maxHeight).then(function (dataURL) {
+    app.download(dataURL, name(obj.title) + '.png');
   });
 });
 
@@ -44,14 +53,19 @@ function part () {
   app.content_script.send('capture');
 }
 app.content_script.receive('capture', function (obj) {
-  app.screenshot(obj.left, obj.top, obj.width, obj.height, obj.devicePixelRatio).then(function (canvas) {
-    app.download(canvas.toDataURL(), name(obj.title) + '.png');
+  app.screenshot(obj.left, obj.top, obj.width, obj.height, obj.devicePixelRatio).then(function (dataURL) {
+    app.download(dataURL, name(obj.title) + '.png');
   });
 });
 
-app.context_menu.create(
-  'Easy Screenshot', 'icons/16.png', [
-    ['Capture Visual Part', 'icons/full.png', full],
+(function () {
+  var items = [
+    ['Capture Visual Part', 'icons/visual.png', visual],
     ['Capture a Portion', 'icons/part.png', part]
-  ]
-);
+  ];
+  if (isFirefox) {
+    items.unshift(['Capture Entire Screen', 'icons/entire.png', entire]);
+  }
+  app.context_menu.create('Easy Screenshot', 'icons/16.png', items);
+})();
+

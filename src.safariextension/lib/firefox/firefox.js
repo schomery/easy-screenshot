@@ -4,7 +4,6 @@
 var self          = require('sdk/self'),
     data          = self.data,
     sp            = require('sdk/simple-prefs'),
-    Request       = require('sdk/request').Request,
     prefs         = sp.prefs,
     pageMod       = require('sdk/page-mod'),
     tabs          = require('sdk/tabs'),
@@ -13,15 +12,18 @@ var self          = require('sdk/self'),
     contextMenu   = require('sdk/context-menu'),
     array         = require('sdk/util/array'),
     {Cu}          = require('chrome'),
+    {viewFor}     = require('sdk/view/core'),
     windowUtils   =  require('sdk/window/utils'),
-    tabsUtils     = require('sdk/tabs/utils');
+    tabsUtils     = require('sdk/tabs/utils'),
+    windows       = require('sdk/windows').browserWindows,
+    unload        = require('sdk/system/unload');
 
 Cu.import('resource://gre/modules/Promise.jsm');
 
 exports.content_script = (function () {
   var workers = [], content_script_arr = [];
   pageMod.PageMod({
-    include: ['*'],
+    include: ['http://*', 'https://*', 'file:///*'],
     contentScriptFile: data.url('./content_script/inject.js'),
     contentScriptWhen: 'start',
     contentStyleFile : data.url('./content_script/inject.css'),
@@ -110,7 +112,7 @@ exports.context_menu = {
       image: data.url(img),
       items: arr.map(addOne),
       context: contextMenu.PredicateContext(function (context) {
-        return context.documentURL.indexOf('http') !== -1;
+        return context.documentURL.indexOf('http') !== -1 || context.documentURL.indexOf('file') !== -1;
       })
     });
   }
@@ -122,31 +124,65 @@ exports.version = function () {
 
 exports.timer = timers;
 
-exports.screenshot = function (left, top, width, height) {
-  var window = windowUtils.getMostRecentBrowserWindow();
-  var tab = tabsUtils.getActiveTab(window);
-  var thumbnail = window.document.createElementNS('http://www.w3.org/1999/xhtml', 'canvas');
-  window = tab.linkedBrowser.contentWindow;
-  left = left || 0;
-  top = top || 0;
-  width = width || window.innerWidth;
-  height = height || window.innerHeight;
-  thumbnail.width = width;
-  thumbnail.height = height;
-  var ctx = thumbnail.getContext('2d');
-  ctx.drawWindow(window, window.scrollX + left, window.scrollY + top, width, height, 'rgb(255,255,255)');
+var connect = (function () {
+  var d;
+  function screenshot (e) {
+    if (d) {
+      d.resolve(e.data);
+    }
+  }
+  function attach (window) {
+    var mm = viewFor(window).messageManager;
+    mm.loadFrameScript(data.url('chrome.js'), true);
+    mm.addMessageListener('screenshot', screenshot);
+  }
 
-  return Promise.resolve(thumbnail);
-};
+  for (let window of windows) {
+    attach(window);
+  }
+  windows.on('open', function (window) {
+    attach(window);
+  });
+  unload.when(function () {
+    for (let tab of tabs) {
+      var mm = tabsUtils.getBrowserForTab(viewFor(tab)).messageManager;
+      mm.removeMessageListener('screenshot', screenshot);
+      mm.sendAsyncMessage('detach');
+    }
+  });
+  return {
+    screenshot: function (left, top, width, height) {
+      d = new Promise.defer();
+      var window = windowUtils.getMostRecentBrowserWindow();
+      var tab = tabsUtils.getActiveTab(window);
+      if (tab) {
+        timers.setTimeout(function () {
+          tabsUtils.getBrowserForTab(viewFor(tab)).messageManager.sendAsyncMessage('screenshot', {
+            left, top, width, height
+          });
+        }, 500);
+      }
+      else {
+        d.reject();
+      }
+      return d.promise;
+    },
+    download: function (uri, name) {
+      var window = windowUtils.getMostRecentBrowserWindow();
+      var tab = tabsUtils.getActiveTab(window);
+      if (tab) {
+        timers.setTimeout(function () {
+          tabsUtils.getBrowserForTab(viewFor(tab)).messageManager.sendAsyncMessage('download', {
+            uri, name
+          });
+        }, 500);
+      }
+    }
+  };
+})();
+exports.screenshot = connect.screenshot;
+exports.download = connect.download;
 
-exports.download = function (uri, name) {
-  var window = windowUtils.getMostRecentBrowserWindow();
-  var tab = tabsUtils.getActiveTab(window);
-  var document = tab.linkedBrowser.contentWindow.document;
-  var link = document.createElement('a');
-  link.setAttribute('style', 'display: none');
-  link.download = name;
-  link.href = uri;
-  document.body.appendChild(link);
-  link.click();
-};
+sp.on('tineye', function () {
+  exports.tab.open('https://addons.mozilla.org/en-US/firefox/addon/capture-reverse-image-search/');
+});

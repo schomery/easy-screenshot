@@ -124,7 +124,7 @@ app.screenshot = function (left, top, width, height, devicePixelRatio) {
       else {
         ctx.drawImage(img, 0, 0);
       }
-      d.resolve(canvas);
+      d.resolve(canvas.toDataURL());
     };
     img.src = dataUrl;
   });

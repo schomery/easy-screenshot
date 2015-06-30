@@ -181,6 +181,23 @@ background.receive('capture', function () {
   capture.install();
   monitor.install();
 });
-background.receive('title', function () {
-  background.send('title', document.title);
+
+background.receive('entire', function () {
+  background.send('entire', {
+    title: document.title,
+    scrollX: window.scrollX,
+    scrollY: window.scrollY,
+    maxWidth: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth, document.body.offsetWidth, document.documentElement.offsetWidth, document.body.clientWidth, document.documentElement.clientWidth),
+    maxHeight: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, document.body.offsetHeight, document.documentElement.offsetHeight, document.body.clientHeight, document.documentElement.clientHeight),
+  });
+});
+
+background.receive('visual', function () {
+  background.send('visual', {
+    title: document.title,
+    scrollX: window.scrollX,
+    scrollY: window.scrollY,
+    maxWidth: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth, document.body.offsetWidth, document.documentElement.offsetWidth, document.body.clientWidth, document.documentElement.clientWidth),
+    maxHeight: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, document.body.offsetHeight, document.documentElement.offsetHeight, document.body.clientHeight, document.documentElement.clientHeight),
+  });
 });
