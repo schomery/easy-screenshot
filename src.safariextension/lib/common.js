@@ -68,4 +68,3 @@ app.content_script.receive('capture', function (obj) {
   }
   app.context_menu.create('Easy Screenshot', 'icons/16.png', items);
 })();
-

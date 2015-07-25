@@ -4,7 +4,7 @@
   "description": "Easy Screenshot is an easy-to-use screen capturing tool from right-click context menu.",
   "id": "jid0-SnuIiIyRmNnMhukLu6VK8DQkq12",
   "license": "mozilla public license 1.1",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "author": "Jeremy Schomery",
   "lib": "lib",
   "main": "common",
@@ -19,6 +19,6 @@
     "label": "Learn more",
     "name": "tineye",
     "title": "Perform Reverse Image Search:",
-    "description": "Capture, Reverse Image Search extension is a tool based on Easy Screenshot that captures a portion of screen and performs reverse image search on it."
+    "description": "'Capture, Reverse Image Search' extension is a tool based on Easy Screenshot that captures a portion of screen and performs reverse image search on it."
   }]
 }
