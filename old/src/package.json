@@ -1,10 +1,10 @@
 {
-  "title": "Easy Screenshot",
+  "title": "Web Clipper : Easy Screenshot",
   "name": "iescreenshot",
   "description": "Easy Screenshot is an easy-to-use screen capturing tool from right-click context menu.",
   "id": "jid0-SnuIiIyRmNnMhukLu6VK8DQkq12@jetpack",
   "license": "MPL 2.0",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "author": "Jeremy Schomery",
   "main": "./lib/common.js",
   "url": "http://mybrowseraddon.com/screenshot.html",

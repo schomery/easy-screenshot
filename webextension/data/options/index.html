@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Easy Screenshot :: Options</title>
+  <style>
+    body {
+      padding: 10px;
+      font-family: "Helvetica Neue",Helvetica,sans-serif;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <p>
+    <label><input type="checkbox" id="saveAs"> Ask for location to store screenshots</label>
+    <br>
+    <label><input type="checkbox" id="timestamp"> Add timestamps to filenames</label>
+  </p>
+  <table>
+    <tr>
+      <td>Delay in milliseconds between each capture (entire page)</td>
+      <td><input type="number" id="delay"></td>
+    </tr>
+    <tr>
+      <td>Scroll offset (entire page)</td>
+      <td><input type="number" id="offset"></td>
+    </tr>
+  </table>
+
+  <div>
+    <button id="save">Save</button>
+    <span id="status"></span>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+</html>

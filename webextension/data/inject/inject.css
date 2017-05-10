@@ -4,9 +4,8 @@
   z-index: 2147483646;
   border: gray 1px dotted;
   box-shadow: 0 0 0 50000px rgba(0, 0, 0, 0.2);
-  box-size
 }
-.itrisearch-box:before {
+.itrisearch-box::before {
   content: '';
   display: block;
   width: calc(100% + 20px);

@@ -1,9 +1,9 @@
 {
-  "name": "Easy Screenshot",
+  "name": "Web Clipper : Easy Screenshot",
   "short_name": "iescreenshot",
   "description": "Easy Screenshot is an easy-to-use screen capturing tool from right-click context menu.",
   "author": "Jeremy Schomery",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "manifest_version": 2,
   "permissions": [
     "tabs",
