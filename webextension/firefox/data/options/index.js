@@ -1,6 +1,6 @@
 'use strict';
 
-function restore () {
+function restore() {
   chrome.storage.local.get({
     delay: 500,
     offset: 50,
@@ -14,11 +14,11 @@ function restore () {
   });
 }
 
-function save () {
-  let delay = Math.max(document.getElementById('delay').value, 100);
-  let offset = Math.max(document.getElementById('offset').value, 10);
-  let timestamp = document.getElementById('timestamp').checked;
-  let saveAs = document.getElementById('saveAs').checked;
+function save() {
+  const delay = Math.max(document.getElementById('delay').value, 100);
+  const offset = Math.max(document.getElementById('offset').value, 10);
+  const timestamp = document.getElementById('timestamp').checked;
+  const saveAs = document.getElementById('saveAs').checked;
 
   chrome.storage.local.set({
     delay,
@@ -26,7 +26,7 @@ function save () {
     timestamp,
     saveAs
   }, () => {
-    let status = document.getElementById('status');
+    const status = document.getElementById('status');
     status.textContent = 'Options saved.';
     setTimeout(() => status.textContent = '', 750);
     restore();

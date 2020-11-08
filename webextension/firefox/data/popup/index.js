@@ -1,6 +1,6 @@
 'use strict';
 
-var tab;
+let tab;
 
 document.addEventListener('click', e => {
   const cmd = e.target.dataset.cmd;

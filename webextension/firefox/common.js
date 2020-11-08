@@ -1,20 +1,29 @@
 'use strict';
 
-function capture (request) {
-  return new Promise(function (resolve, reject) {
-    chrome.tabs.captureVisibleTab(null, {format: 'png'}, (dataUrl) => {
+function notify(e) {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: '/data/icons/48.png',
+    title: chrome.runtime.getManifest().name,
+    message: e.message || e
+  });
+}
+
+function capture(request) {
+  return new Promise(function(resolve, reject) {
+    chrome.tabs.captureVisibleTab(null, {format: 'png'}, dataUrl => {
       if (!request) {
         return resolve(dataUrl);
       }
 
-      let left = request.left * request.devicePixelRatio;
-      let top = request.top * request.devicePixelRatio;
-      let width = request.width * request.devicePixelRatio;
-      let height = request.height * request.devicePixelRatio;
+      const left = request.left * request.devicePixelRatio;
+      const top = request.top * request.devicePixelRatio;
+      const width = request.width * request.devicePixelRatio;
+      const height = request.height * request.devicePixelRatio;
 
-      let canvas = document.createElement('canvas');
-      let ctx = canvas.getContext('2d');
-      let img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
       img.onload = () => {
         canvas.width = width || img.width;
         canvas.height = height || img.height;
@@ -32,55 +41,57 @@ function capture (request) {
   });
 }
 
-function save (url, filename) {
+function save(url, filename) {
   chrome.storage.local.get({
     timestamp: true,
     saveAs: false
   }, prefs => {
     if (prefs.timestamp) {
-      filename = filename += ' ' + ((new Date()).toLocaleString()).replace(/\:/g, '-');
+      const time = new Date();
+      filename = filename += ' ' + time.toLocaleDateString() + ' ' + time.toLocaleTimeString();
     }
     filename = filename
-      .replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, '');
+      .replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>{}[\]\\/]/gi, '-');
     filename += '.png';
 
-    fetch(url)
-    .then(res => res.blob())
-    .then(blob => {
-      let url = URL.createObjectURL(blob);
+    fetch(url).then(res => res.blob()).then(blob => {
+      const url = URL.createObjectURL(blob);
       chrome.downloads.download({
         url,
         filename,
         saveAs: prefs.saveAs
       }, () => {
         if (chrome.runtime.lastError) {
-          let a = document.createElement('a');
-          a.href = url;
-          a.setAttribute('download', filename);
-          a.dispatchEvent(new MouseEvent('click'));
+          chrome.downloads.download({
+            url,
+            filename: 'image.png',
+            saveAs: prefs.saveAs
+          });
         }
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 20000);
       });
     });
-
   });
 }
 
-function matrix (id) {
-  return new Promise(function (resolve, reject) {
+function matrix(id) {
+  return new Promise(function(resolve, reject) {
     chrome.storage.local.get({
       delay: 500,
       offset: 50
     }, prefs => {
-      let locations = [];
-      let cache = [];
+      const locations = [];
+      const cache = [];
       let devicePixelRatio = 1;
-      let canvas = document.createElement('canvas');
-      let ctx = canvas.getContext('2d');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
 
-      function two () {
+      function two() {
         if (cache.length) {
-          let obj = cache.shift();
-          let img = new Image();
+          const obj = cache.shift();
+          const img = new Image();
           img.onload = () => {
             ctx.drawImage(
               img, 0, 0,
@@ -101,9 +112,9 @@ function matrix (id) {
         }
       }
 
-      function one () {
+      function one() {
         if (locations.length) {
-          let [x, y] = locations.shift();
+          const [x, y] = locations.shift();
           chrome.tabs.executeScript(id, {
             'code': `
               window.scroll(${x}, ${y});
@@ -113,10 +124,10 @@ function matrix (id) {
               ]
             `
           }, rtn => {
-            let [x, y] = rtn[0];
+            const [x, y] = rtn[0];
             window.setTimeout(() => {
               capture().then(dataUrl => {
-                //save(dataUrl, x + '-' + y + '.png');
+                // save(dataUrl, x + '-' + y + '.png');
                 cache.push({x, y, dataUrl});
                 one();
               });
@@ -130,10 +141,16 @@ function matrix (id) {
 
       chrome.tabs.executeScript(id, {
         'code': `
-          [document.body.scrollWidth, document.body.scrollHeight, document.documentElement.clientWidth, document.documentElement.clientHeight, window.devicePixelRatio]
+          [
+            document.body.scrollWidth,
+            document.body.scrollHeight,
+            document.documentElement.clientWidth,
+            document.documentElement.clientHeight,
+            window.devicePixelRatio
+          ]
         `
       }, rtn => {
-        let [scrollWidth, scrollHeight, innerWidth, innerHeight] = rtn[0];
+        const [scrollWidth, scrollHeight, innerWidth, innerHeight] = rtn[0];
         devicePixelRatio = rtn[0][4];
         canvas.width = scrollWidth * devicePixelRatio;
         canvas.height = scrollHeight * devicePixelRatio;
@@ -148,14 +165,14 @@ function matrix (id) {
   });
 }
 
-(function (callback) {
+(function(callback) {
   if (chrome.runtime && chrome.runtime.onInstalled) {
     chrome.runtime.onInstalled.addListener(callback);
   }
   else {
     callback();
   }
-})(function () {
+})(function() {
   chrome.contextMenus.create({
     'id': 'capture-visual',
     'title': 'Capture Visual Part',
@@ -173,9 +190,9 @@ function matrix (id) {
   });
 });
 
-function onCommand (cmd, tab) {
+function onCommand(cmd, tab) {
   if (cmd === 'capture-visual') {
-    capture().then(a => save(a, tab.title)).catch(e => window.alert(e.message || e));
+    capture().then(a => save(a, tab.title)).catch(e => notify(e.message || e));
   }
   else if (cmd === 'capture-portion') {
     chrome.tabs.insertCSS(tab.id, {
@@ -187,7 +204,7 @@ function onCommand (cmd, tab) {
     });
   }
   else if (cmd === 'capture-entire') {
-    matrix(tab.id).then(a => save(a, tab.title)).catch(e => window.alert(e.message || e));
+    matrix(tab.id).then(a => save(a, tab.title)).catch(e => notify(e.message || e));
   }
 }
 
@@ -197,27 +214,36 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 chrome.runtime.onMessage.addListener((request, sender) => {
   if (request.method === 'captured') {
-    capture(request).then(a => save(a, sender.tab.title)).catch(e => window.alert(e.message || e));
+    capture(request).then(a => save(a, sender.tab.title)).catch(e => notify(e.message || e));
   }
   if (request.method === 'popup') {
     onCommand(request.cmd, request.tab);
   }
 });
 
-//
-chrome.storage.local.get('version', prefs => {
-  let version = chrome.runtime.getManifest().version;
-  let isFirefox = navigator.userAgent.indexOf('Firefox') !== -1;
-  if (isFirefox ? !prefs.version : prefs.version !== version) {
-    chrome.storage.local.set({version}, () => {
-      chrome.tabs.create({
-        url: 'http://mybrowseraddon.com/screenshot.html?version=' + version +
-          '&type=' + (prefs.version ? ('upgrade&p=' + prefs.version) : 'install')
-      });
+/* FAQs & Feedback */
+{
+  const {management, runtime: {onInstalled, setUninstallURL, getManifest}, storage, tabs} = chrome;
+  if (navigator.webdriver !== true) {
+    const page = getManifest().homepage_url;
+    const {name, version} = getManifest();
+    onInstalled.addListener(({reason, previousVersion}) => {
+      management.getSelf(({installType}) => installType === 'normal' && storage.local.get({
+        'faqs': true,
+        'last-update': 0
+      }, prefs => {
+        if (reason === 'install' || (prefs.faqs && reason === 'update')) {
+          const doUpdate = (Date.now() - prefs['last-update']) / 1000 / 60 / 60 / 24 > 45;
+          if (doUpdate && previousVersion !== version) {
+            tabs.create({
+              url: page + '?version=' + version + (previousVersion ? '&p=' + previousVersion : '') + '&type=' + reason,
+              active: reason === 'install'
+            });
+            storage.local.set({'last-update': Date.now()});
+          }
+        }
+      }));
     });
+    setUninstallURL(page + '?rd=feedback&name=' + encodeURIComponent(name) + '&version=' + version);
   }
-});
-(function () {
-  let {version} = chrome.runtime.getManifest();
-  chrome.runtime.setUninstallURL('http://mybrowseraddon.com/screenshot.html?type=uninstall' + '&v=' + version);
-})();
+}

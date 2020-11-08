@@ -1,11 +1,26 @@
 'use strict';
 
-var monitor, capture, guide;
+var monitor = window.monitor;
+var capture = window.capture;
+var guide = window.guide;
 
-capture = (function () {
-  var box, _left, _top, left, top, width, height;
+try {
+  guide.remove();
+  capture.remove();
+  monitor.remove();
+}
+catch (e) {}
 
-  function update (e) {
+capture = (function() {
+  let box;
+  let _left;
+  let _top;
+  let left;
+  let top;
+  let width;
+  let height;
+
+  function update(e) {
     left = (e.clientX > _left ? _left : e.clientX - 1);
     top = (e.clientY > _top ? _top : e.clientY - 1);
     width = Math.abs(e.clientX - _left);
@@ -15,7 +30,7 @@ capture = (function () {
     box.style.width = width + 'px';
     box.style.height = height + 'px';
   }
-  function remove () {
+  function remove() {
     chrome.runtime.sendMessage({
       method: 'captured',
       left: left + 1,
@@ -23,7 +38,8 @@ capture = (function () {
       width: width - 2,
       height: height - 2,
       devicePixelRatio: window.devicePixelRatio,
-      title: document.title
+      title: document.title,
+      service: window.service // used by Reverse Image Search extension
     });
     guide.remove();
     capture.remove();
@@ -45,10 +61,10 @@ capture = (function () {
   }
 
   return {
-    install: function () {
+    install: function() {
       document.addEventListener('mousedown', mousedown, false);
     },
-    remove: function () {
+    remove: function() {
       document.removeEventListener('mousedown', mousedown, false);
       document.removeEventListener('mousemove', update, false);
       document.removeEventListener('mouseup', remove, false);
@@ -59,17 +75,19 @@ capture = (function () {
   };
 })();
 
-guide = (function () {
-  var guide1, guide2, guide3;
-  function position (left, top) {
+guide = (function() {
+  let guide1;
+  let guide2;
+  let guide3;
+  function position(left, top) {
     guide1.style.width = left + 'px';
     guide2.style.height = top + 'px';
   }
-  function update (e) {
+  function update(e) {
     position(e.clientX, e.clientY);
   }
   return {
-    install: function () {
+    install: function() {
       guide1 = document.createElement('div');
       guide2 = document.createElement('div');
       guide3 = document.createElement('div');
@@ -81,7 +99,7 @@ guide = (function () {
       document.body.appendChild(guide2);
       document.addEventListener('mousemove', update, false);
     },
-    remove: function () {
+    remove: function() {
       document.removeEventListener('mousemove', update, false);
       if (guide1 && guide1.parentNode) {
         guide1.parentNode.removeChild(guide1);
@@ -97,8 +115,8 @@ guide = (function () {
   };
 })();
 
-monitor = (function () {
-  function keydown (e) {
+monitor = (function() {
+  function keydown(e) {
     if (e.keyCode === 27) {
       guide.remove();
       capture.remove();
@@ -106,10 +124,10 @@ monitor = (function () {
     }
   }
   return {
-    install: function () {
+    install: function() {
       window.addEventListener('keydown', keydown, false);
     },
-    remove: function () {
+    remove: function() {
       window.removeEventListener('keydown', keydown, false);
     }
   };
