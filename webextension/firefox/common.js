@@ -1,13 +1,11 @@
 'use strict';
 
-function notify(e) {
-  chrome.notifications.create({
-    type: 'basic',
-    iconUrl: '/data/icons/48.png',
-    title: chrome.runtime.getManifest().name,
-    message: e.message || e
-  });
-}
+const notify = e => chrome.notifications.create({
+  type: 'basic',
+  iconUrl: '/data/icons/48.png',
+  title: chrome.runtime.getManifest().name,
+  message: e.message || e
+});
 
 function capture(request) {
   return new Promise(function(resolve, reject) {
@@ -64,13 +62,10 @@ function save(url, filename) {
         if (chrome.runtime.lastError) {
           chrome.downloads.download({
             url,
-            filename: 'image.png',
-            saveAs: prefs.saveAs
+            filename: 'image.png'
           });
         }
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 20000);
+        setTimeout(() => URL.revokeObjectURL(url), 20000);
       });
     });
   });
@@ -165,30 +160,31 @@ function matrix(id) {
   });
 }
 
-(function(callback) {
+{
+  const once = () => {
+    chrome.contextMenus.create({
+      'id': 'capture-visual',
+      'title': 'Capture Visual Part',
+      'contexts': ['page', 'selection', 'link']
+    });
+    chrome.contextMenus.create({
+      'id': 'capture-portion',
+      'title': 'Capture a Portion',
+      'contexts': ['page', 'selection', 'link']
+    });
+    chrome.contextMenus.create({
+      'id': 'capture-entire',
+      'title': 'Capture Entire Screen',
+      'contexts': ['page', 'selection', 'link']
+    });
+  };
   if (chrome.runtime && chrome.runtime.onInstalled) {
-    chrome.runtime.onInstalled.addListener(callback);
+    chrome.runtime.onInstalled.addListener(once);
   }
   else {
-    callback();
+    once();
   }
-})(function() {
-  chrome.contextMenus.create({
-    'id': 'capture-visual',
-    'title': 'Capture Visual Part',
-    'contexts': ['page', 'selection', 'link']
-  });
-  chrome.contextMenus.create({
-    'id': 'capture-portion',
-    'title': 'Capture a Portion',
-    'contexts': ['page', 'selection', 'link']
-  });
-  chrome.contextMenus.create({
-    'id': 'capture-entire',
-    'title': 'Capture Entire Screen',
-    'contexts': ['page', 'selection', 'link']
-  });
-});
+}
 
 function onCommand(cmd, tab) {
   if (cmd === 'capture-visual') {
@@ -235,10 +231,11 @@ chrome.runtime.onMessage.addListener((request, sender) => {
         if (reason === 'install' || (prefs.faqs && reason === 'update')) {
           const doUpdate = (Date.now() - prefs['last-update']) / 1000 / 60 / 60 / 24 > 45;
           if (doUpdate && previousVersion !== version) {
-            tabs.create({
+            tabs.query({active: true, currentWindow: true}, tbs => tabs.create({
               url: page + '?version=' + version + (previousVersion ? '&p=' + previousVersion : '') + '&type=' + reason,
-              active: reason === 'install'
-            });
+              active: reason === 'install',
+              ...(tbs && tbs.length && {index: tbs[0].index + 1})
+            }));
             storage.local.set({'last-update': Date.now()});
           }
         }

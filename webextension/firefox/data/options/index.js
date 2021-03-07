@@ -1,5 +1,7 @@
 'use strict';
 
+const toast = document.getElementById('toast');
+
 function restore() {
   chrome.storage.local.get({
     delay: 500,
@@ -26,12 +28,30 @@ function save() {
     timestamp,
     saveAs
   }, () => {
-    const status = document.getElementById('status');
-    status.textContent = 'Options saved.';
-    setTimeout(() => status.textContent = '', 750);
+    toast.textContent = 'Options saved.';
+    setTimeout(() => toast.textContent = '', 750);
     restore();
   });
 }
 
 document.addEventListener('DOMContentLoaded', restore);
 document.getElementById('save').addEventListener('click', save);
+
+// reset
+document.getElementById('reset').addEventListener('click', e => {
+  if (e.detail === 1) {
+    toast.textContent = 'Double-click to reset!';
+    window.setTimeout(() => toast.textContent = '', 750);
+  }
+  else {
+    localStorage.clear();
+    chrome.storage.local.clear(() => {
+      chrome.runtime.reload();
+      window.close();
+    });
+  }
+});
+// support
+document.getElementById('support').addEventListener('click', () => chrome.tabs.create({
+  url: chrome.runtime.getManifest().homepage_url + '?rd=donate'
+}));

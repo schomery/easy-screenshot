@@ -1,14 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Easy Screenshot :: Options</title>
-  <style>
-    body {
-      padding: 10px;
-      font-family: "Helvetica Neue",Helvetica,sans-serif;
-      font-size: 13px;
-    }
-  </style>
+  <title>Options Page :: Easy Screenshot</title>
 </head>
 
 <body>
@@ -28,10 +21,11 @@
     </tr>
   </table>
 
-  <div>
-    <button id="save">Save</button>
-    <span id="status"></span>
-  </div>
+  <p>
+    <input type="button" value="Factory Reset" id="reset">
+    <input type="button" value="Support Development" id="support"> - <input type="button" value="Save Options" id="save">
+    <span id="toast"></span>
+  </p>
 
   <script src="index.js"></script>
 </body>

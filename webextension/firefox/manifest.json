@@ -1,8 +1,7 @@
 {
-  "name": "Web Clipper : Easy Screenshot",
-  "description": "Easy Screenshot is an easy-to-use visual part, the entire page, or a selective screen capturing tool.",
-  "author": "Jeremy Schomery",
-  "version": "0.3.4",
+  "name": "Easy Screenshot - a Web Clipper",
+  "description": "an easy-to-use screen capturing tool for the visual part, the entire page, or a selective area with auto-scroll support",
+  "version": "0.3.5",
   "manifest_version": 2,
   "permissions": [
     "contextMenus",
