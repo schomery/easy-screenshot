@@ -29,3 +29,36 @@ chrome.tabs.query({
     document.body.dataset.disabled = true;
   }
 });
+
+chrome.storage.local.get({
+  'save-clipboard': false,
+  'save-disk': true
+}, prefs => {
+  document.getElementById('save-clipboard').checked = prefs['save-clipboard'];
+  document.getElementById('save-disk').checked = prefs['save-disk'];
+});
+
+document.getElementById('save-clipboard').onchange = e => {
+  if (e.target.checked) {
+    chrome.permissions.request({
+      permissions: ['clipboardWrite'],
+      origins: []
+    }, granted => {
+      if (granted === false) {
+        e.target.checked = false;
+      }
+      console.log(e.target.checked);
+      chrome.storage.local.set({
+        'save-clipboard': e.target.checked
+      });
+    });
+  }
+  else {
+    chrome.storage.local.set({
+      'save-clipboard': e.target.checked
+    });
+  }
+};
+document.getElementById('save-disk').onchange = e => chrome.storage.local.set({
+  'save-disk': e.target.checked
+});

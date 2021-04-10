@@ -55,3 +55,7 @@ document.getElementById('reset').addEventListener('click', e => {
 document.getElementById('support').addEventListener('click', () => chrome.tabs.create({
   url: chrome.runtime.getManifest().homepage_url + '?rd=donate'
 }));
+// preview
+document.getElementById('yt').addEventListener('click', () => chrome.tabs.create({
+  url: 'https://www.youtube.com/watch?v=BfUtaaGO4HA'
+}));

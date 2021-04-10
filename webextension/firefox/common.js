@@ -1,3 +1,4 @@
+/* global browser */
 'use strict';
 
 const notify = e => chrome.notifications.create({
@@ -41,33 +42,53 @@ function capture(request) {
 
 function save(url, filename) {
   chrome.storage.local.get({
-    timestamp: true,
-    saveAs: false
+    'timestamp': true,
+    'saveAs': false,
+    'save-disk': true,
+    'save-clipboard': false
   }, prefs => {
-    if (prefs.timestamp) {
-      const time = new Date();
-      filename = filename += ' ' + time.toLocaleDateString() + ' ' + time.toLocaleTimeString();
-    }
-    filename = filename
-      .replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>{}[\]\\/]/gi, '-');
-    filename += '.png';
+    if (prefs['save-disk'] || prefs['save-clipboard'] === false) {
+      if (prefs.timestamp) {
+        const time = new Date();
+        filename = filename += ' ' + time.toLocaleDateString() + ' ' + time.toLocaleTimeString();
+      }
+      filename = filename
+        .replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>{}[\]\\/]/gi, '-');
+      filename += '.png';
 
-    fetch(url).then(res => res.blob()).then(blob => {
-      const url = URL.createObjectURL(blob);
-      chrome.downloads.download({
-        url,
-        filename,
-        saveAs: prefs.saveAs
-      }, () => {
-        if (chrome.runtime.lastError) {
-          chrome.downloads.download({
-            url,
-            filename: 'image.png'
-          });
-        }
-        setTimeout(() => URL.revokeObjectURL(url), 20000);
+      fetch(url).then(res => res.blob()).then(blob => {
+        const url = URL.createObjectURL(blob);
+        chrome.downloads.download({
+          url,
+          filename,
+          saveAs: prefs.saveAs
+        }, () => {
+          if (chrome.runtime.lastError) {
+            chrome.downloads.download({
+              url,
+              filename: 'image.png'
+            });
+          }
+          setTimeout(() => URL.revokeObjectURL(url), 20000);
+        });
       });
-    });
+    }
+    if (prefs['save-clipboard']) {
+      if (/Firefox/.test(navigator.userAgent)) {
+        fetch(url).then(response => response.arrayBuffer()).then(buffer => {
+          browser.clipboard.setImageData(buffer, 'png');
+        });
+      }
+      else {
+        chrome.tabs.executeScript({
+          code: `
+            fetch('${url}').then(res => res.blob()).then(blob => navigator.clipboard.write([new ClipboardItem({
+              'image/png': blob
+            })])).catch(e => alert(e.message));
+          `
+        });
+      }
+    }
   });
 }
 
