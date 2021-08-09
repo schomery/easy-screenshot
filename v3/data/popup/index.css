@@ -1,0 +1,64 @@
+body {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  font-family: "Helvetica Neue",Helvetica,sans-serif;
+  font-size: 13px;
+}
+
+div[data-cmd] {
+  background-position: left 10px center;
+  background-repeat: no-repeat;
+  width: 48px;
+  height: 48px;
+  line-height: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  text-indent: 48px;
+  cursor: pointer;
+}
+div[data-cmd]:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+div[data-cmd]:active {
+  opacity: 0.5;
+}
+div[data-cmd="capture-entire"] {
+  background-image: url(../icons/entire.png);
+}
+div[data-cmd="capture-visual"] {
+  background-image: url(../icons/visual.png);
+}
+div[data-cmd="capture-portion"] {
+  background-image: url(../icons/part.png);
+}
+
+body[data-disabled=true] div[data-cmd] {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+#mode {
+  display: flex;
+  flex-direction: column;
+  border-top: solid 3px #ccc;
+  padding-top: 10px;
+  margin: 10px 0 0 0;
+}
+#mode > label {
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+#mode > label:not(:last-child) {
+
+}
+#mode > label:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+#mode input {
+  margin-right: 5px;
+}

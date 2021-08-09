@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Options Page :: Easy Screenshot</title>
+  <link rel="stylesheet" type="text/css" href="index.css">
+</head>
+
+<body>
+  <p>
+    <label><input type="checkbox" id="saveAs"> Ask for location to store screenshots</label>
+    <br>
+    <label><input type="checkbox" id="timestamp"> Add timestamps to filenames</label>
+  </p>
+  <table>
+    <tr>
+      <td>Delay in milliseconds between each capture (entire page)</td>
+      <td><input type="number" id="delay"></td>
+    </tr>
+    <tr>
+      <td>Scroll offset (entire page)</td>
+      <td><input type="number" id="offset"></td>
+    </tr>
+  </table>
+
+  <p>
+    <input type="button" value="Factory Reset" id="reset">
+    <input type="button" value="YouTube Preview" id="yt">
+  </p>
+  <p>
+    <input type="button" value="Support Development" id="support"> - <input type="button" value="Save Options" id="save">
+    <span id="toast"></span>
+  </p>
+
+  <script src="index.js"></script>
+</body>
+</html>
