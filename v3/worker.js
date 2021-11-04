@@ -54,6 +54,7 @@ function save(blob, tab) {
     'timestamp': true,
     'saveAs': false,
     'save-disk': true,
+    'edit-online': false,
     'save-clipboard': false
   }, prefs => {
     let filename = tab.title;
@@ -64,8 +65,33 @@ function save(blob, tab) {
 
     const reader = new FileReader();
     reader.onload = () => {
+      // save to clipboard
+      if (prefs['save-clipboard']) {
+        chrome.scripting.executeScript({
+          target: {tabId: tab.id},
+          func: async href => {
+            try {
+              const blob = await fetch(href).then(r => r.blob());
+              await navigator.clipboard.write([new ClipboardItem({
+                'image/png': blob
+              })]);
+            }
+            catch (e) {
+              console.warn(e);
+              alert(e.message);
+            }
+          },
+          args: [reader.result]
+        });
+      }
+      // edit online
+      if (prefs['edit-online']) {
+        setTimeout(() => chrome.tabs.create({
+          url: 'https://webbrowsertools.com/jspaint/pwa/build/index.html#load:' + reader.result
+        }), 500);
+      }
       // save to disk
-      if (prefs['save-disk'] || prefs['save-clipboard'] === false) {
+      if (prefs['save-disk'] || (prefs['save-clipboard'] === false && prefs['edit-online'] === false)) {
         chrome.downloads.download({
           url: reader.result,
           filename: filename + '.png',
@@ -86,25 +112,6 @@ function save(blob, tab) {
               }
             });
           }
-        });
-      }
-      // save to clipboard
-      if (prefs['save-clipboard']) {
-        chrome.scripting.executeScript({
-          target: {tabId: tab.id},
-          func: async href => {
-            try {
-              const blob = await fetch(href).then(r => r.blob());
-              await navigator.clipboard.write([new ClipboardItem({
-                'image/png': blob
-              })]);
-            }
-            catch (e) {
-              console.warn(e);
-              alert(e.message);
-            }
-          },
-          args: [reader.result]
         });
       }
     };
@@ -235,7 +242,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   onCommand(info.menuItemId, tab);
 });
 
-chrome.runtime.onMessage.addListener((request, sender) => {
+chrome.runtime.onMessage.addListener((request, sender, response) => {
   if (request.method === 'captured') {
     capture(request).then(a => save(a, sender.tab)).catch(e => {
       console.warn(e);
@@ -244,6 +251,8 @@ chrome.runtime.onMessage.addListener((request, sender) => {
   }
   if (request.method === 'popup') {
     onCommand(request.cmd, request.tab);
+
+    response(true);
   }
 });
 

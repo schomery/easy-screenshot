@@ -1,7 +1,8 @@
 {
   "name": "Easy Screenshot - a Web Clipper",
-  "description": "an easy-to-use screen capturing tool for the visual part, the entire page, or a selective area with auto-scroll support",
-  "version": "0.4.0",
+  "description": "__MSG_description__",
+  "default_locale": "en",
+  "version": "0.4.1",
   "manifest_version": 3,
   "permissions": [
     "contextMenus",
@@ -32,5 +33,10 @@
   },
   "action": {
     "default_popup": "data/popup/index.html"
+  },
+  "commands": {
+    "_execute_action": {
+      "description": "Press the action button"
+    }
   }
 }

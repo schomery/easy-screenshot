@@ -32,10 +32,12 @@ chrome.tabs.query({
 
 chrome.storage.local.get({
   'save-clipboard': false,
-  'save-disk': true
+  'save-disk': true,
+  'edit-online': false
 }, prefs => {
   document.getElementById('save-clipboard').checked = prefs['save-clipboard'];
   document.getElementById('save-disk').checked = prefs['save-disk'];
+  document.getElementById('edit-online').checked = prefs['edit-online'];
 });
 
 document.getElementById('save-clipboard').onchange = e => {
@@ -45,4 +47,7 @@ document.getElementById('save-clipboard').onchange = e => {
 };
 document.getElementById('save-disk').onchange = e => chrome.storage.local.set({
   'save-disk': e.target.checked
+});
+document.getElementById('edit-online').onchange = e => chrome.storage.local.set({
+  'edit-online': e.target.checked
 });
