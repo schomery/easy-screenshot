@@ -10,7 +10,8 @@ document.addEventListener('click', e => {
       cmd,
       tab: {
         id: tab.id,
-        title: tab.title
+        title: tab.title,
+        windowId: tab.windowId
       }
     }, window.close);
   }

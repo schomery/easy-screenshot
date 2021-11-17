@@ -119,9 +119,10 @@ function save(blob, tab) {
   });
 }
 
-async function matrix(tabId) {
+async function matrix(tab) {
+  const tabId = tab.id;
   const prefs = await new Promise(resolve => chrome.storage.local.get({
-    delay: 500,
+    delay: 600,
     offset: 50,
     quality: 0.95
   }, resolve));
@@ -147,30 +148,40 @@ async function matrix(tabId) {
   for (let x = 0; x < width - prefs.offset; x += w - prefs.offset) {
     for (let y = 0; y < height - prefs.offset; y += h - prefs.offset) {
       // move to the location
-      const [{
-        result: [i, j]
-      }] = await chrome.scripting.executeScript({
+      await chrome.scripting.executeScript({
         target: {tabId},
-        func: (x, y) => {
-          window.scroll(x, y);
-          return [
-            document.body.scrollLeft || document.documentElement.scrollLeft,
-            document.body.scrollTop || document.documentElement.scrollTop
-          ];
-        },
+        func: (x, y) => window.scroll(x, y),
         args: [x, y]
       });
       // wait
       await new Promise(resolve => setTimeout(resolve, prefs.delay));
+      // read with delay
+      const [{
+        result: [i, j]
+      }] = await chrome.scripting.executeScript({
+        target: {tabId},
+        func: () => [
+          document.body.scrollLeft || document.documentElement.scrollLeft,
+          document.body.scrollTop || document.documentElement.scrollTop
+        ]
+      });
+
       // capture
+      await chrome.tabs.update(tabId, {
+        highlighted: true
+      });
+      await chrome.windows.update(tab.windowId, {
+        focused: true
+      });
+
       const href = await capture();
       // write
       const blob = await fetch(href).then(r => r.blob());
       const img = await createImageBitmap(blob);
       ctx.drawImage(
         img,
-        0, 0, img.width * ratio, img.height * ratio,
-        i * ratio, j * ratio, img.width * ratio, img.height * ratio
+        0, 0, img.width, img.height,
+        i * ratio, j * ratio, img.width, img.height
       );
     }
   }
@@ -231,7 +242,7 @@ function onCommand(cmd, tab) {
     });
   }
   else if (cmd === 'capture-entire') {
-    matrix(tab.id).then(a => save(a, tab)).catch(e => {
+    matrix(tab).then(a => save(a, tab)).catch(e => {
       console.warn(e);
       notify(e.message || e);
     });

@@ -4,7 +4,7 @@ const toast = document.getElementById('toast');
 
 function restore() {
   chrome.storage.local.get({
-    delay: 500,
+    delay: 600,
     offset: 50,
     timestamp: true,
     saveAs: false
