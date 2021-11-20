@@ -17,7 +17,7 @@ function capture(request) {
       }
 
       if (!request) {
-        return resolve(dataUrl);
+        return fetch(dataUrl).then(r => r.blob()).then(resolve, reject);
       }
 
       const left = request.left * request.devicePixelRatio;
@@ -44,7 +44,7 @@ function capture(request) {
           type: 'image/png',
           quality: prefs.quality
         }).then(resolve);
-      });
+      }).catch(reject);
     });
   });
 }
@@ -57,6 +57,8 @@ function save(blob, tab) {
     'edit-online': false,
     'save-clipboard': false
   }, prefs => {
+    prefs.saveAs = false; // saveAs is not supported on v3
+
     let filename = tab.title;
     if (prefs.timestamp) {
       const time = new Date();
@@ -95,7 +97,7 @@ function save(blob, tab) {
         chrome.downloads.download({
           url: reader.result,
           filename: filename + '.png',
-          saveAs: false && prefs.saveAs // saveAs is not supported on v3
+          saveAs: prefs.saveAs
         }, () => {
           const lastError = chrome.runtime.lastError;
           if (lastError) {
@@ -174,9 +176,8 @@ async function matrix(tab) {
         focused: true
       });
 
-      const href = await capture();
+      const blob = await capture();
       // write
-      const blob = await fetch(href).then(r => r.blob());
       const img = await createImageBitmap(blob);
       ctx.drawImage(
         img,
@@ -221,7 +222,7 @@ async function matrix(tab) {
 
 function onCommand(cmd, tab) {
   if (cmd === 'capture-visual') {
-    capture().then(href => fetch(href).then(r => r.blob())).then(blob => save(blob, tab)).catch(e => {
+    capture().then(blob => save(blob, tab)).catch(e => {
       console.warn(e);
       notify(e.message || e);
     });
