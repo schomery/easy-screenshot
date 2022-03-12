@@ -19,6 +19,7 @@
 
 .itrisearch-guide-1,
 .itrisearch-guide-2 {
+  all: initial;
   background-color: transparent;
   box-sizing: border-box;
   position: fixed;
@@ -36,6 +37,7 @@
   width: 100%;
 }
 .itrisearch-guide-3 {
+  all: initial;
   background: transparent;
   z-index: 2147483645;
   position: fixed;

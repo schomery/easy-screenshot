@@ -1,6 +1,12 @@
 /* global ClipboardItem */
 'use strict';
 
+chrome.runtime.onConnect.addListener(p => {
+  p.onDisconnect.addListener(() => {
+    console.log('port is closed', p.name);
+  });
+});
+
 const notify = e => chrome.notifications.create({
   type: 'basic',
   iconUrl: '/data/icons/48.png',
@@ -34,16 +40,17 @@ function capture(request) {
         }, resolve));
 
         const img = await createImageBitmap(blob);
+
         if (width && height) {
           ctx.drawImage(img, left, top, width, height, 0, 0, width, height);
         }
         else {
           ctx.drawImage(img, 0, 0);
         }
-        canvas.convertToBlob({
+        resolve(await canvas.convertToBlob({
           type: 'image/png',
           quality: prefs.quality
-        }).then(resolve);
+        }));
       }).catch(reject);
     });
   });
@@ -128,10 +135,15 @@ async function matrix(tab) {
     offset: 50,
     quality: 0.95
   }, resolve));
+  prefs.delay = Math.max(prefs.delay, 1000 / chrome.tabs.MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND || 2);
 
   const r = await chrome.scripting.executeScript({
     target: {tabId},
     func: () => {
+      self.port = chrome.runtime.connect({
+        name: 'matrix'
+      });
+
       return {
         width: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth),
         height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
@@ -186,11 +198,21 @@ async function matrix(tab) {
       );
     }
   }
+
   const blob = await canvas.convertToBlob({
     type: 'image/png',
     quality: prefs.quality
   });
   chrome.action.setBadgeText({tabId, text: ''});
+  chrome.scripting.executeScript({
+    target: {tabId},
+    func: () => {
+      try {
+        self.port.disconnect();
+      }
+      catch (e) {}
+    }
+  });
   return blob;
 }
 
