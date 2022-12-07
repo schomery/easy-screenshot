@@ -8,19 +8,16 @@
 <body>
   <p>
     <label><input type="checkbox" id="saveAs"> Ask for location to store screenshots</label>
-    <br>
-    <label><input type="checkbox" id="timestamp"> Add timestamps to filenames</label>
   </p>
-  <table>
-    <tr>
-      <td>Delay in milliseconds between each capture (entire page)</td>
-      <td><input type="number" id="delay"></td>
-    </tr>
-    <tr>
-      <td>Scroll offset (entire page)</td>
-      <td><input type="number" id="offset"></td>
-    </tr>
-  </table>
+
+  <div class="opts">
+    <label for="delay">Delay in milliseconds between each capture (entire page)</label>
+    <input type="number" id="delay">
+    <label for="offset">Scroll offset (entire page)</label>
+    <input type="number" id="offset">
+    <label for="mask">Filename Format</label>
+    <input type="text" id="mask">
+  </div>
 
   <p>
     <input type="button" value="Factory Reset" id="reset">

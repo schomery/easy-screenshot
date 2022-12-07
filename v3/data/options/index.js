@@ -6,12 +6,12 @@ function restore() {
   chrome.storage.local.get({
     delay: 600,
     offset: 50,
-    timestamp: true,
+    mask: '[date] - [time] - [title]',
     saveAs: false
   }, prefs => {
     document.getElementById('delay').value = prefs.delay;
     document.getElementById('offset').value = prefs.offset;
-    document.getElementById('timestamp').checked = prefs.timestamp;
+    document.getElementById('mask').value = prefs.mask;
     document.getElementById('saveAs').checked = prefs.saveAs;
   });
 }
@@ -19,13 +19,13 @@ function restore() {
 function save() {
   const delay = Math.max(document.getElementById('delay').value, 100);
   const offset = Math.max(document.getElementById('offset').value, 10);
-  const timestamp = document.getElementById('timestamp').checked;
+  const mask = document.getElementById('mask').value;
   const saveAs = document.getElementById('saveAs').checked;
 
   chrome.storage.local.set({
     delay,
     offset,
-    timestamp,
+    mask,
     saveAs
   }, () => {
     toast.textContent = 'Options saved.';

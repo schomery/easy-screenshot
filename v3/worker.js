@@ -58,19 +58,23 @@ function capture(request) {
 
 function save(blob, tab) {
   chrome.storage.local.get({
-    'timestamp': true,
     'saveAs': false,
     'save-disk': true,
     'edit-online': false,
-    'save-clipboard': false
+    'save-clipboard': false,
+    'mask': '[date] - [time] - [title]'
   }, prefs => {
     prefs.saveAs = false; // saveAs is not supported on v3
 
-    let filename = tab.title;
-    if (prefs.timestamp) {
-      const time = new Date();
-      filename = filename += ' ' + time.toLocaleDateString() + ' ' + time.toLocaleTimeString();
-    }
+    const filename = prefs['mask']
+      .replace('[title]', tab.title)
+      .replace('[date]', new Intl.DateTimeFormat('en-CA').format())
+      .replace('[time]', new Intl.DateTimeFormat('en-CA', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format());
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -159,8 +163,16 @@ async function matrix(tab) {
 
   chrome.action.setBadgeText({tabId, text: 'R'});
 
+  const mx = Math.ceil(
+    (width - prefs.offset) / (w - prefs.offset)) * Math.ceil((height - prefs.offset) / (h - prefs.offset)
+  );
+  let p = 0;
+
   for (let x = 0; x < width - prefs.offset; x += w - prefs.offset) {
     for (let y = 0; y < height - prefs.offset; y += h - prefs.offset) {
+      p += 1;
+      chrome.action.setBadgeText({tabId, text: (p / mx * 100).toFixed(0) + '%'});
+
       // move to the location
       await chrome.scripting.executeScript({
         target: {tabId},
@@ -198,7 +210,7 @@ async function matrix(tab) {
       );
     }
   }
-
+  chrome.action.setBadgeText({tabId, text: 'Wait...'});
   const blob = await canvas.convertToBlob({
     type: 'image/png',
     quality: prefs.quality
