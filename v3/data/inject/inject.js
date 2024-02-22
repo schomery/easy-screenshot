@@ -1,3 +1,4 @@
+/* eslint-disable no-var */
 'use strict';
 
 var monitor = window.monitor;
@@ -30,17 +31,29 @@ capture = (function() {
     box.style.width = width + 'px';
     box.style.height = height + 'px';
   }
-  function remove() {
-    chrome.runtime.sendMessage({
+  function remove(e) {
+    const props = {
+      devicePixelRatio: window.devicePixelRatio,
+      title: document.title,
+      service: window.service // used by Reverse Image Search extension
+    };
+
+    chrome.runtime.sendMessage(!left && !width ? {
+      method: 'captured',
+      left: e.clientX,
+      top: e.clientY,
+      width: 32,
+      height: 32,
+      ...props
+    } : {
       method: 'captured',
       left: left + 1,
       top: top + 1,
       width: width - 2,
       height: height - 2,
-      devicePixelRatio: window.devicePixelRatio,
-      title: document.title,
-      service: window.service // used by Reverse Image Search extension
+      ...props
     });
+
     guide.remove();
     capture.remove();
     monitor.remove();
@@ -57,7 +70,7 @@ capture = (function() {
 
     document.addEventListener('mousemove', update, false);
     document.addEventListener('mouseup', remove, false);
-    document.body.appendChild(box);
+    document.documentElement.appendChild(box);
   }
 
   return {
@@ -68,8 +81,9 @@ capture = (function() {
       document.removeEventListener('mousedown', mousedown, false);
       document.removeEventListener('mousemove', update, false);
       document.removeEventListener('mouseup', remove, false);
-      if (box && box.parentNode) {
-        box.parentNode.removeChild(box);
+
+      for (const e of document.querySelectorAll('.itrisearch-box')) {
+        e.remove();
       }
     }
   };
@@ -91,25 +105,19 @@ guide = (function() {
       guide1 = document.createElement('div');
       guide2 = document.createElement('div');
       guide3 = document.createElement('div');
+
       guide1.setAttribute('class', 'itrisearch-guide-1');
       guide2.setAttribute('class', 'itrisearch-guide-2');
       guide3.setAttribute('class', 'itrisearch-guide-3');
-      document.body.appendChild(guide3);
-      document.body.appendChild(guide1);
-      document.body.appendChild(guide2);
+      document.documentElement.append(guide3, guide2, guide1);
       document.addEventListener('mousemove', update, false);
     },
     remove: function() {
       document.removeEventListener('mousemove', update, false);
-      if (guide1 && guide1.parentNode) {
-        guide1.parentNode.removeChild(guide1);
+      for (const e of document.querySelectorAll('.itrisearch-guide-1, .itrisearch-guide-2, .itrisearch-guide-3')) {
+        e.remove();
       }
-      if (guide2 && guide2.parentNode) {
-        guide2.parentNode.removeChild(guide2);
-      }
-      if (guide3 && guide3.parentNode) {
-        guide3.parentNode.removeChild(guide3);
-      }
+
       capture.remove();
     }
   };
@@ -123,12 +131,19 @@ monitor = (function() {
       monitor.remove();
     }
   }
+  function contextmenu() {
+    guide.remove();
+    capture.remove();
+    monitor.remove();
+  }
   return {
     install: function() {
       window.addEventListener('keydown', keydown, false);
+      window.addEventListener('contextmenu', contextmenu, false);
     },
     remove: function() {
       window.removeEventListener('keydown', keydown, false);
+      window.removeEventListener('contextmenu', contextmenu, false);
     }
   };
 })();

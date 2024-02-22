@@ -1,9 +1,11 @@
-/* global ClipboardItem */
+/* global ceds */
 'use strict';
+
+self.importScripts('ceds.js');
 
 chrome.runtime.onConnect.addListener(p => {
   p.onDisconnect.addListener(() => {
-    console.log('port is closed', p.name);
+    console.info('port is closed', p.name);
   });
 });
 
@@ -13,6 +15,29 @@ const notify = e => chrome.notifications.create({
   title: chrome.runtime.getManifest().name,
   message: e.message || e
 });
+
+const sanitizeFilename = filename => {
+  // Common replacements
+  filename = filename.replace(/[\\/:"*?<>|]/g, '_'); // Replace disallowed characters with underscores
+  filename = filename.replace(/^\.+/g, ''); // Remove leading periods
+
+  // OS-specific restrictions
+  const platform = navigator.platform.toLowerCase();
+  if (platform.includes('win')) {
+    // Windows specific restrictions
+    filename = filename.replace(/^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i, ''); // Remove reserved file names
+    filename = filename.replace(/[\x00-\x1F\x7F-\x9F]/g, '_'); // Remove control characters
+    filename = filename.substring(0, 255); // Windows max filename length is 255 characters
+  }
+  else if (platform.includes('mac') || platform.includes('linux')) {
+    // macOS and Linux specific restrictions
+    filename = filename.trim(); // Trim leading/trailing whitespace
+    filename = filename.replace(/^\./g, ''); // Remove leading periods
+    filename = filename.substring(0, 255); // macOS and Linux max filename length is 255 characters
+  }
+
+  return filename;
+};
 
 function capture(request) {
   return new Promise((resolve, reject) => {
@@ -47,10 +72,10 @@ function capture(request) {
         else {
           ctx.drawImage(img, 0, 0);
         }
-        resolve(await canvas.convertToBlob({
+        canvas.convertToBlob({
           type: 'image/png',
           quality: prefs.quality
-        }));
+        }).then(resolve, reject);
       }).catch(reject);
     });
   });
@@ -64,7 +89,7 @@ function save(blob, tab) {
     'save-clipboard': false,
     'mask': '[date] - [time] - [title]'
   }, prefs => {
-    prefs.saveAs = false; // saveAs is not supported on v3
+    // prefs.saveAs = false; // saveAs is not supported on v3
 
     const filename = prefs['mask']
       .replace('[title]', tab.title)
@@ -76,8 +101,7 @@ function save(blob, tab) {
         hour12: false
       }).format());
 
-    const reader = new FileReader();
-    reader.onload = () => {
+    const next = du => {
       // save to clipboard
       if (prefs['save-clipboard']) {
         chrome.scripting.executeScript({
@@ -94,33 +118,36 @@ function save(blob, tab) {
               alert(e.message);
             }
           },
-          args: [reader.result]
+          args: [du],
+          injectImmediately: true
         });
       }
       // edit online
       if (prefs['edit-online']) {
         setTimeout(() => chrome.tabs.create({
-          url: 'https://webbrowsertools.com/jspaint/pwa/build/index.html#load:' + reader.result
+          url: 'https://webbrowsertools.com/jspaint/pwa/build/index.html#load:' + du
         }), 500);
       }
       // save to disk
       if (prefs['save-disk'] || (prefs['save-clipboard'] === false && prefs['edit-online'] === false)) {
         chrome.downloads.download({
-          url: reader.result,
+          url: du,
           filename: filename + '.png',
           saveAs: prefs.saveAs
         }, () => {
           const lastError = chrome.runtime.lastError;
           if (lastError) {
             chrome.downloads.download({
-              url: reader.result,
-              filename: filename.replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>{}[\]\\/]/gi, '-') + '.png'
+              url: du,
+              filename: sanitizeFilename(filename) + '.png',
+              saveAs: prefs.saveAs
             }, () => {
               const lastError = chrome.runtime.lastError;
               if (lastError) {
                 chrome.downloads.download({
-                  url: reader.result,
-                  filename: 'image.png'
+                  url: du,
+                  filename: 'image.png',
+                  saveAs: prefs.saveAs
                 });
               }
             });
@@ -128,7 +155,14 @@ function save(blob, tab) {
         });
       }
     };
-    reader.readAsDataURL(blob);
+    if (typeof blob === 'string') {
+      next(blob);
+    }
+    else {
+      const reader = new FileReader();
+      reader.onload = () => next(reader.result);
+      reader.readAsDataURL(blob);
+    }
   });
 }
 
@@ -155,7 +189,8 @@ async function matrix(tab) {
         h: document.documentElement.clientHeight,
         ratio: window.devicePixelRatio
       };
-    }
+    },
+    injectImmediately: true
   });
   const {ratio, width, height, w, h} = r[0].result;
   const canvas = new OffscreenCanvas(width * ratio, height * ratio);
@@ -176,8 +211,13 @@ async function matrix(tab) {
       // move to the location
       await chrome.scripting.executeScript({
         target: {tabId},
-        func: (x, y) => window.scroll(x, y),
-        args: [x, y]
+        func: (x, y) => window.scrollTo({
+          left: x,
+          top: y,
+          behavior: 'instant'
+        }),
+        args: [x, y],
+        injectImmediately: true
       });
       // wait
       await new Promise(resolve => setTimeout(resolve, prefs.delay));
@@ -189,7 +229,8 @@ async function matrix(tab) {
         func: () => [
           document.body.scrollLeft || document.documentElement.scrollLeft,
           document.body.scrollTop || document.documentElement.scrollTop
-        ]
+        ],
+        injectImmediately: true
       });
 
       // capture
@@ -210,7 +251,7 @@ async function matrix(tab) {
       );
     }
   }
-  chrome.action.setBadgeText({tabId, text: 'Wait...'});
+  chrome.action.setBadgeText({tabId, text: '...'});
   const blob = await canvas.convertToBlob({
     type: 'image/png',
     quality: prefs.quality
@@ -231,19 +272,35 @@ async function matrix(tab) {
 {
   const once = () => {
     chrome.contextMenus.create({
-      'id': 'capture-visual',
-      'title': 'Capture Visual Part',
-      'contexts': ['page', 'selection', 'link']
-    });
-    chrome.contextMenus.create({
       'id': 'capture-portion',
       'title': 'Capture a Portion',
       'contexts': ['page', 'selection', 'link']
     });
     chrome.contextMenus.create({
-      'id': 'capture-entire',
-      'title': 'Capture Entire Screen',
+      'id': 'capture-visual',
+      'title': 'Capture Visual Part',
       'contexts': ['page', 'selection', 'link']
+    });
+    chrome.contextMenus.create({
+      'id': 'capture-entire',
+      'title': 'Capture Entire Screen (steps)',
+      'contexts': ['page', 'selection', 'link']
+    });
+    chrome.contextMenus.create({
+      'id': 'capture-entire-debugger',
+      'title': 'Capture Entire Screen (debugger)',
+      'contexts': ['page', 'selection', 'link']
+    });
+    chrome.contextMenus.create({
+      'id': 'capture-entire-debugger-steps',
+      'title': 'Capture Entire Screen (debugger + steps)',
+      'contexts': ['page', 'selection', 'link']
+    });
+    chrome.contextMenus.create({
+      'id': 'capture-element',
+      'title': 'Capture Selected Element',
+      'contexts': ['selection'],
+      'visible': false
     });
   };
   if (chrome.runtime && chrome.runtime.onInstalled) {
@@ -254,7 +311,44 @@ async function matrix(tab) {
   }
 }
 
-function onCommand(cmd, tab) {
+function capturewithdebugger(options, tab) {
+  const target = {
+    tabId: tab.id
+  };
+
+  return new Promise((resolve, reject) => chrome.debugger.attach(target, '1.3', () => {
+    const lastError = chrome.runtime.lastError;
+
+    if (lastError) {
+      reject(lastError);
+    }
+    else {
+      chrome.debugger.sendCommand(target, 'Page.captureScreenshot', {
+        format: 'png',
+        ...options
+      }, result => {
+        const lastError = chrome.runtime.lastError;
+
+        if (lastError) {
+          chrome.debugger.detach(target);
+          reject(lastError);
+        }
+        else if (!result) {
+          chrome.debugger.detach(target);
+          reject(Error('Failed to capture screenshot'));
+        }
+        else {
+          chrome.debugger.detach(target);
+
+          save('data:image/png;base64,' + result.data, tab);
+          resolve();
+        }
+      });
+    }
+  }));
+}
+
+function onCommand(cmd, tab, info) {
   if (cmd === 'capture-visual') {
     capture().then(blob => save(blob, tab)).catch(e => {
       console.warn(e);
@@ -272,7 +366,8 @@ function onCommand(cmd, tab) {
       }
       chrome.scripting.executeScript({
         target: {tabId: tab.id},
-        files: ['data/inject/inject.js']
+        files: ['data/inject/inject.js'],
+        injectImmediately: true
       });
     });
   }
@@ -282,11 +377,65 @@ function onCommand(cmd, tab) {
       notify(e.message || e);
     });
   }
+  else if (cmd === 'capture-entire-debugger') {
+    capturewithdebugger({
+      captureBeyondViewport: true
+    }, tab).catch(e => {
+      console.error(e);
+      notify(e.message);
+    });
+  }
+  // alt method
+  else if (cmd === 'capture-entire-debugger-steps') {
+    ceds(tab).then(du => save(du, tab)).catch(e => {
+      console.error(e);
+      notify(e.message);
+    });
+  }
+  else if (cmd === 'capture-element') {
+    if (info.frameId !== 0) {
+      return notify('Currently this function only works on top frame document');
+    }
+
+    chrome.scripting.executeScript({
+      target: {
+        tabId: tab.id,
+        frameIds: [info.frameId]
+      },
+      func: () => {
+        const range = getSelection().getRangeAt(0);
+        const clientRect = range.getBoundingClientRect();
+        range.collapse();
+
+        return {
+          x: document.documentElement.scrollLeft + clientRect.x,
+          y: document.documentElement.scrollTop + clientRect.y,
+          width: clientRect.width,
+          height: clientRect.height
+        };
+      },
+      injectImmediately: true
+    }).then(r => capturewithdebugger({
+      clip: {
+        ...r[0].result,
+        scale: 1
+      },
+      captureBeyondViewport: true
+    }, tab)).catch(e => {
+      console.error(e);
+      notify(e.message);
+    });
+  }
 }
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  onCommand(info.menuItemId, tab);
+  onCommand(info.menuItemId, tab, info);
 });
+
+chrome.commands.onCommand.addListener(cmd => chrome.tabs.query({
+  active: true,
+  lastFocusedWindow: true
+}, tabs => tabs && tabs[0] && onCommand(cmd, tabs[0])));
 
 chrome.runtime.onMessage.addListener((request, sender, response) => {
   if (request.method === 'captured') {
@@ -316,7 +465,7 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
         if (reason === 'install' || (prefs.faqs && reason === 'update')) {
           const doUpdate = (Date.now() - prefs['last-update']) / 1000 / 60 / 60 / 24 > 45;
           if (doUpdate && previousVersion !== version) {
-            tabs.query({active: true, currentWindow: true}, tbs => tabs.create({
+            tabs.query({active: true, lastFocusedWindow: true}, tbs => tabs.create({
               url: page + '?version=' + version + (previousVersion ? '&p=' + previousVersion : '') + '&type=' + reason,
               active: reason === 'install',
               ...(tbs && tbs.length && {index: tbs[0].index + 1})

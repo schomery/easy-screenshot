@@ -1,5 +1,5 @@
 body {
-  width: 200px;
+  width: 340px;
   display: flex;
   flex-direction: column;
   font-family: "Helvetica Neue",Helvetica,sans-serif;
@@ -25,10 +25,13 @@ div[data-cmd]:hover {
 div[data-cmd]:active {
   opacity: 0.5;
 }
-div[data-cmd="capture-entire"] {
+div[data-cmd="capture-entire"],
+div[data-cmd="capture-entire-debugger"],
+div[data-cmd="capture-entire-debugger-steps"] {
   background-image: url(../icons/entire.png);
 }
-div[data-cmd="capture-visual"] {
+div[data-cmd="capture-visual"],
+div[data-cmd="capture-visual-debugger"] {
   background-image: url(../icons/visual.png);
 }
 div[data-cmd="capture-portion"] {

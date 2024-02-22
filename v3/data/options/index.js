@@ -59,3 +59,10 @@ document.getElementById('support').addEventListener('click', () => chrome.tabs.c
 document.getElementById('yt').addEventListener('click', () => chrome.tabs.create({
   url: 'https://www.youtube.com/watch?v=BfUtaaGO4HA'
 }));
+
+// links
+for (const a of [...document.querySelectorAll('[data-href]')]) {
+  if (a.hasAttribute('href') === false) {
+    a.href = chrome.runtime.getManifest().homepage_url + '#' + a.dataset.href;
+  }
+}
