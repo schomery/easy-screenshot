@@ -1,7 +1,10 @@
 /* global ceds */
-'use strict';
 
-self.importScripts('ceds.js');
+if (typeof importScripts !== 'undefined') {
+  self.importScripts('ceds.js');
+}
+
+const isFF = /Firefox/.test(navigator.userAgent);
 
 chrome.runtime.onConnect.addListener(p => {
   p.onDisconnect.addListener(() => {
@@ -14,7 +17,7 @@ const notify = e => chrome.notifications.create({
   iconUrl: '/data/icons/48.png',
   title: chrome.runtime.getManifest().name,
   message: e.message || e
-});
+}, id => setTimeout(chrome.notifications.clear, 5000, id));
 
 const sanitizeFilename = filename => {
   // Common replacements
@@ -39,140 +42,200 @@ const sanitizeFilename = filename => {
   return filename;
 };
 
-function capture(request) {
-  return new Promise((resolve, reject) => {
-    chrome.tabs.captureVisibleTab(null, {format: 'png'}, dataUrl => {
-      const lastError = chrome.runtime.lastError;
-      if (lastError) {
-        return reject(lastError);
-      }
+async function capture(request) {
+  const dataUrl = await chrome.tabs.captureVisibleTab(null, {format: 'png'});
 
-      if (!request) {
-        return fetch(dataUrl).then(r => r.blob()).then(resolve, reject);
-      }
+  if (!request) {
+    return fetch(dataUrl).then(r => r.blob());
+  }
 
-      const left = request.left * request.devicePixelRatio;
-      const top = request.top * request.devicePixelRatio;
-      const width = request.width * request.devicePixelRatio;
-      const height = request.height * request.devicePixelRatio;
+  const left = request.left * request.devicePixelRatio;
+  const top = request.top * request.devicePixelRatio;
+  const width = request.width * request.devicePixelRatio;
+  const height = request.height * request.devicePixelRatio;
 
-      const canvas = new OffscreenCanvas(width, height);
-      const ctx = canvas.getContext('2d');
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext('2d');
 
-      fetch(dataUrl).then(r => r.blob()).then(async blob => {
-        const prefs = await new Promise(resolve => chrome.storage.local.get({
-          quality: 0.95
-        }, resolve));
+  const blob = await fetch(dataUrl).then(r => r.blob());
+  const prefs = await chrome.storage.local.get({
+    quality: 0.95
+  });
 
-        const img = await createImageBitmap(blob);
+  const img = await createImageBitmap(blob);
 
-        if (width && height) {
-          ctx.drawImage(img, left, top, width, height, 0, 0, width, height);
-        }
-        else {
-          ctx.drawImage(img, 0, 0);
-        }
-        canvas.convertToBlob({
-          type: 'image/png',
-          quality: prefs.quality
-        }).then(resolve, reject);
-      }).catch(reject);
-    });
+  if (width && height) {
+    ctx.drawImage(img, left, top, width, height, 0, 0, width, height);
+  }
+  else {
+    ctx.drawImage(img, 0, 0);
+  }
+  return canvas.convertToBlob({
+    type: 'image/png',
+    quality: prefs.quality
   });
 }
 
-function save(blob, tab) {
-  chrome.storage.local.get({
+async function copy(content, tab) {
+  // Firefox
+  try {
+    await navigator.clipboard.writeText(content);
+  }
+  catch (e) {
+    try {
+      await chrome.scripting.executeScript({
+        target: {
+          tabId: tab.id
+        },
+        func: content => {
+          navigator.clipboard.writeText(content).catch(() => chrome.runtime.sendMessage({
+            method: 'copy-interface',
+            content
+          }));
+        },
+        args: [content]
+      });
+    }
+    catch (e) {
+      copy.interface(content);
+    }
+  }
+}
+copy.interface = async (value, type = 'content') => {
+  const win = await chrome.windows.getCurrent();
+  const args = new URLSearchParams();
+  args.set(type, value);
+
+  chrome.windows.create({
+    url: '/data/copy/index.html?' + args.toString(),
+    width: 400,
+    height: 300,
+    left: win.left + Math.round((win.width - 400) / 2),
+    top: win.top + Math.round((win.height - 300) / 2),
+    type: 'popup'
+  });
+};
+
+async function save(blob, tab) {
+  const prefs = await chrome.storage.local.get({
     'saveAs': false,
     'save-disk': true,
     'edit-online': false,
     'save-clipboard': false,
     'mask': '[date] - [time] - [title]'
-  }, prefs => {
+  });
     // prefs.saveAs = false; // saveAs is not supported on v3
 
-    const filename = prefs['mask']
-      .replace('[title]', tab.title)
-      .replace('[date]', new Intl.DateTimeFormat('en-CA').format())
-      .replace('[time]', new Intl.DateTimeFormat('en-CA', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      }).format());
+  const filename = prefs['mask']
+    .replace('[title]', tab.title)
+    .replace('[date]', new Intl.DateTimeFormat('en-CA').format())
+    .replace('[time]', new Intl.DateTimeFormat('en-CA', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format());
 
-    const next = du => {
-      // save to clipboard
-      if (prefs['save-clipboard']) {
-        chrome.scripting.executeScript({
-          target: {tabId: tab.id},
-          func: async href => {
-            try {
-              const blob = await fetch(href).then(r => r.blob());
-              await navigator.clipboard.write([new ClipboardItem({
-                'image/png': blob
-              })]);
-            }
-            catch (e) {
-              console.warn(e);
-              alert(e.message);
-            }
-          },
-          args: [du],
-          injectImmediately: true
-        });
+  // convert to data uri with caching
+  const href = () => {
+    if (typeof blob === 'string') {
+      return Promise.resolve(blob);
+    }
+    if (href.cache) {
+      return Promise.resolve(href.cache);
+    }
+
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        href.cache = reader.result;
+        resolve(reader.result);
+      };
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  // save to clipboard
+  if (prefs['save-clipboard']) {
+    chrome.scripting.executeScript({
+      target: {tabId: tab.id},
+      func: async href => {
+        try {
+          const blob = await fetch(href).then(r => r.blob());
+          await navigator.clipboard.write([new ClipboardItem({
+            'image/png': blob
+          })]);
+        }
+        catch (e) {
+          chrome.runtime.sendMessage({
+            method: 'save-to-clipboard',
+            href
+          });
+        }
+      },
+      args: [await href()],
+      injectImmediately: true
+    });
+  }
+  // edit online
+  if (prefs['edit-online']) {
+    const hd = await href();
+    const id = Math.random();
+    save.cache[id] = hd;
+    chrome.tabs.create({
+      url: 'https://webbrowsertools.com/jspaint/pwa/build/index.html#gid=' + id
+    });
+  }
+  // save to disk
+  if (prefs['save-disk'] || (prefs['save-clipboard'] === false && prefs['edit-online'] === false)) {
+    let url;
+    if (isFF) {
+      if (typeof blob === 'string') {
+        const b = await fetch(blob).then(r => r.blob());
+        url = URL.createObjectURL(b);
       }
-      // edit online
-      if (prefs['edit-online']) {
-        setTimeout(() => chrome.tabs.create({
-          url: 'https://webbrowsertools.com/jspaint/pwa/build/index.html#load:' + du
-        }), 500);
+      else {
+        url = URL.createObjectURL(blob);
       }
-      // save to disk
-      if (prefs['save-disk'] || (prefs['save-clipboard'] === false && prefs['edit-online'] === false)) {
+    }
+    else {
+      url = await href();
+    }
+
+    chrome.downloads.download({
+      url,
+      filename: filename + '.png',
+      saveAs: prefs.saveAs
+    }, () => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) {
         chrome.downloads.download({
-          url: du,
-          filename: filename + '.png',
+          url,
+          filename: sanitizeFilename(filename) + '.png',
           saveAs: prefs.saveAs
         }, () => {
           const lastError = chrome.runtime.lastError;
           if (lastError) {
             chrome.downloads.download({
-              url: du,
-              filename: sanitizeFilename(filename) + '.png',
+              url,
+              filename: 'image.png',
               saveAs: prefs.saveAs
-            }, () => {
-              const lastError = chrome.runtime.lastError;
-              if (lastError) {
-                chrome.downloads.download({
-                  url: du,
-                  filename: 'image.png',
-                  saveAs: prefs.saveAs
-                });
-              }
             });
           }
         });
       }
-    };
-    if (typeof blob === 'string') {
-      next(blob);
-    }
-    else {
-      const reader = new FileReader();
-      reader.onload = () => next(reader.result);
-      reader.readAsDataURL(blob);
-    }
-  });
+    });
+  }
 }
+save.cache = {};
 
 async function matrix(tab) {
   const tabId = tab.id;
-  const prefs = await new Promise(resolve => chrome.storage.local.get({
+  const prefs = await chrome.storage.local.get({
     delay: 600,
     offset: 50,
     quality: 0.95
-  }, resolve));
+  });
   prefs.delay = Math.max(prefs.delay, 1000 / chrome.tabs.MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND || 2);
 
   const r = await chrome.scripting.executeScript({
@@ -192,7 +255,17 @@ async function matrix(tab) {
     },
     injectImmediately: true
   });
-  const {ratio, width, height, w, h} = r[0].result;
+  let {ratio, width, height, w, h} = r[0].result;
+
+  // OffscreenCanvasRenderingContext2D.drawImage: Canvas exceeds max size.
+  if (isFF) {
+    const ms = 32767 / ratio;
+    width = Math.min(ms, width);
+    height = Math.min(ms, height);
+    w = Math.min(ms, w);
+    h = Math.min(ms, h);
+  }
+
   const canvas = new OffscreenCanvas(width * ratio, height * ratio);
   const ctx = canvas.getContext('2d');
 
@@ -271,81 +344,79 @@ async function matrix(tab) {
 
 {
   const once = () => {
+    if (once.done) {
+      return;
+    }
+    once.done = true;
+
     chrome.contextMenus.create({
       'id': 'capture-portion',
       'title': 'Capture a Portion',
+      'documentUrlPatterns': ['http://*/*', 'https://*/*'],
       'contexts': ['page', 'selection', 'link']
     });
     chrome.contextMenus.create({
       'id': 'capture-visual',
       'title': 'Capture Visual Part',
+      'documentUrlPatterns': ['http://*/*', 'https://*/*'],
       'contexts': ['page', 'selection', 'link']
     });
     chrome.contextMenus.create({
       'id': 'capture-entire',
       'title': 'Capture Entire Screen (steps)',
+      'documentUrlPatterns': ['http://*/*', 'https://*/*'],
       'contexts': ['page', 'selection', 'link']
     });
     chrome.contextMenus.create({
       'id': 'capture-entire-debugger',
       'title': 'Capture Entire Screen (debugger)',
-      'contexts': ['page', 'selection', 'link']
+      'documentUrlPatterns': ['http://*/*', 'https://*/*'],
+      'contexts': ['page', 'selection', 'link'],
+      'visible': isFF === false
     });
     chrome.contextMenus.create({
       'id': 'capture-entire-debugger-steps',
       'title': 'Capture Entire Screen (debugger + steps)',
-      'contexts': ['page', 'selection', 'link']
+      'documentUrlPatterns': ['http://*/*', 'https://*/*'],
+      'contexts': ['page', 'selection', 'link'],
+      'visible': isFF === false
     });
     chrome.contextMenus.create({
       'id': 'capture-element',
       'title': 'Capture Selected Element',
+      'documentUrlPatterns': ['http://*/*', 'https://*/*'],
       'contexts': ['selection'],
       'visible': false
     });
   };
-  if (chrome.runtime && chrome.runtime.onInstalled) {
-    chrome.runtime.onInstalled.addListener(once);
-  }
-  else {
-    once();
-  }
+
+  chrome.runtime.onInstalled.addListener(once);
+  chrome.runtime.onStartup.addListener(once);
 }
 
-function capturewithdebugger(options, tab) {
+async function capturewithdebugger(options, tab) {
   const target = {
     tabId: tab.id
   };
 
-  return new Promise((resolve, reject) => chrome.debugger.attach(target, '1.3', () => {
-    const lastError = chrome.runtime.lastError;
+  await chrome.debugger.attach(target, '1.3');
 
-    if (lastError) {
-      reject(lastError);
+  try {
+    const result = await chrome.debugger.sendCommand(target, 'Page.captureScreenshot', {
+      format: 'png',
+      ...options
+    });
+    if (!result) {
+      throw Error('Failed to capture screenshot');
     }
-    else {
-      chrome.debugger.sendCommand(target, 'Page.captureScreenshot', {
-        format: 'png',
-        ...options
-      }, result => {
-        const lastError = chrome.runtime.lastError;
+    save('data:image/png;base64,' + result.data, tab);
+    chrome.debugger.detach(target);
+  }
+  catch (e) {
+    chrome.debugger.detach(target).catch(e => {});
 
-        if (lastError) {
-          chrome.debugger.detach(target);
-          reject(lastError);
-        }
-        else if (!result) {
-          chrome.debugger.detach(target);
-          reject(Error('Failed to capture screenshot'));
-        }
-        else {
-          chrome.debugger.detach(target);
-
-          save('data:image/png;base64,' + result.data, tab);
-          resolve();
-        }
-      });
-    }
-  }));
+    throw Error(e);
+  }
 }
 
 function onCommand(cmd, tab, info) {
@@ -444,10 +515,36 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
       notify(e.message || e);
     });
   }
-  if (request.method === 'popup') {
+  else if (request.method === 'popup') {
     onCommand(request.cmd, request.tab);
 
     response(true);
+  }
+  else if (request.method === 'copy-interface') {
+    copy.interface(request.content);
+  }
+  else if (request.method === 'jspaint-ready') {
+    chrome.scripting.executeScript({
+      target: {
+        tabId: sender.tab.id
+      },
+      func: href => {
+        self.open_from_URI(href);
+      },
+      args: [save.cache[request.gid]],
+      world: 'MAIN'
+    }).finally(() => {
+      delete save.cache[request.gid];
+    });
+  }
+  else if (request.method === 'read-gid') {
+    response(save.cache[request.gid]);
+    delete save.cache[request.gid];
+  }
+  else if (request.method === 'save-to-clipboard') {
+    const gid = Math.random();
+    save.cache[gid] = request.href;
+    copy.interface(gid, 'gid');
   }
 });
 
@@ -455,8 +552,7 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
 {
   const {management, runtime: {onInstalled, setUninstallURL, getManifest}, storage, tabs} = chrome;
   if (navigator.webdriver !== true) {
-    const page = getManifest().homepage_url;
-    const {name, version} = getManifest();
+    const {homepage_url: page, name, version} = getManifest();
     onInstalled.addListener(({reason, previousVersion}) => {
       management.getSelf(({installType}) => installType === 'normal' && storage.local.get({
         'faqs': true,

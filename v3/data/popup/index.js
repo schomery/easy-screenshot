@@ -52,3 +52,10 @@ document.getElementById('save-disk').onchange = e => chrome.storage.local.set({
 document.getElementById('edit-online').onchange = e => chrome.storage.local.set({
   'edit-online': e.target.checked
 });
+
+// Firefox
+if (typeof chrome.debugger === 'undefined') {
+  for (const div of document.querySelectorAll('[data-cmd*="-debugger"]')) {
+    div.classList.add('disabled');
+  }
+}

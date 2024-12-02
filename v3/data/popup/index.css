@@ -9,13 +9,12 @@ body {
 div[data-cmd] {
   background-position: left 10px center;
   background-repeat: no-repeat;
-  width: 48px;
   height: 48px;
+  width: 100%;
   line-height: 48px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  width: 100%;
   text-indent: 48px;
   cursor: pointer;
 }
@@ -28,17 +27,18 @@ div[data-cmd]:active {
 div[data-cmd="capture-entire"],
 div[data-cmd="capture-entire-debugger"],
 div[data-cmd="capture-entire-debugger-steps"] {
-  background-image: url(../icons/entire.png);
+  background-image: url("../icons/entire.png");
 }
 div[data-cmd="capture-visual"],
 div[data-cmd="capture-visual-debugger"] {
-  background-image: url(../icons/visual.png);
+  background-image: url('../icons/visual.png');
 }
 div[data-cmd="capture-portion"] {
-  background-image: url(../icons/part.png);
+  background-image: url("../icons/part.png");
 }
 
-body[data-disabled=true] div[data-cmd] {
+body[data-disabled=true] div[data-cmd],
+div[data-cmd].disabled {
   opacity: 0.3;
   pointer-events: none;
 }
@@ -55,9 +55,6 @@ body[data-disabled=true] div[data-cmd] {
   display: flex;
   align-items: center;
   cursor: pointer;
-}
-#mode > label:not(:last-child) {
-
 }
 #mode > label:hover {
   background-color: rgba(0, 0, 0, 0.1);
