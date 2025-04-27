@@ -523,18 +523,27 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
   else if (request.method === 'copy-interface') {
     copy.interface(request.content);
   }
-  else if (request.method === 'jspaint-ready') {
+  else if (request.method === 'jspaint-load-resource') {
     chrome.scripting.executeScript({
       target: {
         tabId: sender.tab.id
       },
-      func: href => {
-        self.open_from_URI(href);
+      func: (gid, href) => {
+        if (typeof self.open_from_URI !== 'undefined') {
+          self.open_from_URI(href);
+          return true;
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+          self.open_from_URI(href);
+        });
       },
-      args: [save.cache[request.gid]],
+      args: [request.gid, save.cache[request.gid]],
       world: 'MAIN'
-    }).finally(() => {
-      delete save.cache[request.gid];
+    }).then(r => {
+      // what if the PWA is not loaded
+      if (r && r[0] && r[0].result === true) {
+        delete save.cache[request.gid];
+      }
     });
   }
   else if (request.method === 'read-gid') {
