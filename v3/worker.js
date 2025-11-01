@@ -43,7 +43,13 @@ const sanitizeFilename = filename => {
 };
 
 async function capture(request) {
-  const dataUrl = await chrome.tabs.captureVisibleTab(null, {format: 'png'});
+  const prefs = await chrome.storage.local.get({
+    format: 'png',
+    quality: 0.95
+  });
+
+  const dataUrl = await chrome.tabs.captureVisibleTab(null, {format: prefs.format});
+  console.log(dataUrl);
 
   if (!request) {
     return fetch(dataUrl).then(r => r.blob());
@@ -58,9 +64,6 @@ async function capture(request) {
   const ctx = canvas.getContext('2d');
 
   const blob = await fetch(dataUrl).then(r => r.blob());
-  const prefs = await chrome.storage.local.get({
-    quality: 0.95
-  });
 
   const img = await createImageBitmap(blob);
 
@@ -71,7 +74,7 @@ async function capture(request) {
     ctx.drawImage(img, 0, 0);
   }
   return canvas.convertToBlob({
-    type: 'image/png',
+    type: 'image/' + prefs.format,
     quality: prefs.quality
   });
 }
@@ -118,6 +121,7 @@ copy.interface = async (value, type = 'content') => {
 
 async function save(blob, tab) {
   const prefs = await chrome.storage.local.get({
+    'format': 'png',
     'saveAs': false,
     'save-disk': true,
     'edit-online': false,
@@ -204,21 +208,21 @@ async function save(blob, tab) {
 
     chrome.downloads.download({
       url,
-      filename: filename + '.png',
+      filename: filename + '.' + prefs.format,
       saveAs: prefs.saveAs
     }, () => {
       const lastError = chrome.runtime.lastError;
       if (lastError) {
         chrome.downloads.download({
           url,
-          filename: sanitizeFilename(filename) + '.png',
+          filename: sanitizeFilename(filename) + '.' + prefs.format,
           saveAs: prefs.saveAs
         }, () => {
           const lastError = chrome.runtime.lastError;
           if (lastError) {
             chrome.downloads.download({
               url,
-              filename: 'image.png',
+              filename: 'image.' + prefs.format,
               saveAs: prefs.saveAs
             });
           }
@@ -401,15 +405,19 @@ async function capturewithdebugger(options, tab) {
 
   await chrome.debugger.attach(target, '1.3');
 
+  const prefs = await chrome.storage.local.get({
+    format: 'png'
+  });
+
   try {
     const result = await chrome.debugger.sendCommand(target, 'Page.captureScreenshot', {
-      format: 'png',
+      format: prefs.format,
       ...options
     });
     if (!result) {
       throw Error('Failed to capture screenshot');
     }
-    save('data:image/png;base64,' + result.data, tab);
+    save('data:image/' + prefs.format + ';base64,' + result.data, tab);
     chrome.debugger.detach(target);
   }
   catch (e) {

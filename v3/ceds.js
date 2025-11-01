@@ -34,7 +34,8 @@ const ceds = async tab => {
   const prefs = await chrome.storage.local.get({
     delay: 600,
     step: 2000,
-    quality: 0.95
+    quality: 0.95,
+    format: 'png'
   });
 
   const mx = Math.ceil(info.width / prefs.step) * Math.ceil(info.height / prefs.step);
@@ -52,7 +53,7 @@ const ceds = async tab => {
     // });
     await new Promise(resolve => setTimeout(resolve, prefs.delay));
     const result = await chrome.debugger.sendCommand(target, 'Page.captureScreenshot', {
-      format: 'png',
+      format: prefs.format,
       captureBeyondViewport: true,
       clip: {
         ...rect,
@@ -63,7 +64,7 @@ const ceds = async tab => {
     if (!result) {
       throw Error('Failed to capture screenshot');
     }
-    return 'data:image/png;base64,' + result.data;
+    return 'data:image/' + prefs.format + ';base64,' + result.data;
   };
 
   const canvas = new OffscreenCanvas(info.width * info.ratio, info.height * info.ratio);
@@ -97,7 +98,7 @@ const ceds = async tab => {
     chrome.debugger.detach(target);
 
     return canvas.convertToBlob({
-      type: 'image/png',
+      type: 'image/' + prefs.format,
       quality: prefs.quality
     }).then(du => {
       chrome.action.setBadgeText({tabId, text: ''});
