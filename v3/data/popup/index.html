@@ -6,11 +6,28 @@
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
-  <div data-cmd="capture-portion" title="Capture a Portion"> Capture a Portion</div>
-  <div data-cmd="capture-visual" title="Capture Visual Part"> Capture Visual Part</div>
-  <div data-cmd="capture-entire" title="Capture Entire Screen"> Capture Entire Screen (steps)</div>
-  <div data-cmd="capture-entire-debugger" title="Capture Entire Screen Using the Deubbger Api"> Capture Entire Screen (debugger)</div>
-  <div data-cmd="capture-entire-debugger-steps" title="Capture Entire Screen Using the Deubbger Api"> Capture Entire Screen (debugger + steps)</div>
+  <div class="menu">
+    <div data-cmd="capture-portion" title="Use the buit-in API to capture visual part then crop it with a canvas.">
+      <span class="item">Capture a Portion</span>
+      <span class="tag">post-rendering</span>
+    </div>
+    <div data-cmd="capture-visual" title="Use the buit-in API to capture visual part">
+      <span class="item">Capture Visual Part</span>
+      <span></span>
+    </div>
+    <div data-cmd="capture-entire" title="Use the buit-in API to capture the screen in parts and combine them with a canvas.">
+      <span class="item">Capture Entire Screen (steps)</span>
+      <span class="tag">post-rendering</span>
+    </div>
+    <div data-cmd="capture-entire-debugger" title="Use the Debugger API to capture the entire screen in one step">
+      <span class="item">Capture Entire Screen (debugger)</span>
+      <span></span>
+    </div>
+    <div data-cmd="capture-entire-debugger-steps" title="Use the Debugger API to capture the screen in parts and combine them with a canvas.">
+      <span class="item">Capture Entire Screen (debugger + steps)</span>
+      <span class="tag">post-rendering</span>
+    </div>
+  </div>
 
   <p id="mode">
     <label><input type="checkbox" id="save-clipboard">Save to the Clipboard</label>

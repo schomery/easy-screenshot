@@ -44,12 +44,15 @@ const sanitizeFilename = filename => {
 
 async function capture(request) {
   const prefs = await chrome.storage.local.get({
-    format: 'png',
-    quality: 0.95
+    'format': 'png',
+    'format-canvas': 'png',
+    'quality': 0.95
   });
 
-  const dataUrl = await chrome.tabs.captureVisibleTab(null, {format: prefs.format});
-  console.log(dataUrl);
+  const dataUrl = await chrome.tabs.captureVisibleTab(null, {
+    format: prefs.format,
+    quality: parseInt(prefs.quality * 100)
+  });
 
   if (!request) {
     return fetch(dataUrl).then(r => r.blob());
@@ -63,7 +66,8 @@ async function capture(request) {
   const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  const blob = await fetch(dataUrl).then(r => r.blob());
+  const r = await fetch(dataUrl);
+  const blob = await r.blob();
 
   const img = await createImageBitmap(blob);
 
@@ -73,8 +77,9 @@ async function capture(request) {
   else {
     ctx.drawImage(img, 0, 0);
   }
+
   return canvas.convertToBlob({
-    type: 'image/' + prefs.format,
+    type: 'image/' + prefs['format-canvas'],
     quality: prefs.quality
   });
 }
@@ -121,7 +126,6 @@ copy.interface = async (value, type = 'content') => {
 
 async function save(blob, tab) {
   const prefs = await chrome.storage.local.get({
-    'format': 'png',
     'saveAs': false,
     'save-disk': true,
     'edit-online': false,
@@ -165,9 +169,10 @@ async function save(blob, tab) {
       target: {tabId: tab.id},
       func: async href => {
         try {
-          const blob = await fetch(href).then(r => r.blob());
+          const r = await fetch(href);
+          const blob = await r.blob();
           await navigator.clipboard.write([new ClipboardItem({
-            'image/png': blob
+            [r.headers.get('content-type')]: blob
           })]);
         }
         catch (e) {
@@ -192,10 +197,12 @@ async function save(blob, tab) {
   }
   // save to disk
   if (prefs['save-disk'] || (prefs['save-clipboard'] === false && prefs['edit-online'] === false)) {
+    let mime = blob.type;
     let url;
     if (isFF) {
       if (typeof blob === 'string') {
         const b = await fetch(blob).then(r => r.blob());
+        mime = b.type;
         url = URL.createObjectURL(b);
       }
       else {
@@ -205,24 +212,26 @@ async function save(blob, tab) {
     else {
       url = await href();
     }
+    mime = mime || url.split(',')[0].split(':')[1].split(';')[0];
 
+    const extension = mime.split('/')[1].split(';')[0];
     chrome.downloads.download({
       url,
-      filename: filename + '.' + prefs.format,
+      filename: filename + '.' + extension,
       saveAs: prefs.saveAs
     }, () => {
       const lastError = chrome.runtime.lastError;
       if (lastError) {
         chrome.downloads.download({
           url,
-          filename: sanitizeFilename(filename) + '.' + prefs.format,
+          filename: sanitizeFilename(filename) + '.' + extension,
           saveAs: prefs.saveAs
         }, () => {
           const lastError = chrome.runtime.lastError;
           if (lastError) {
             chrome.downloads.download({
               url,
-              filename: 'image.' + prefs.format,
+              filename: 'image.' + extension,
               saveAs: prefs.saveAs
             });
           }
@@ -236,9 +245,10 @@ save.cache = {};
 async function matrix(tab) {
   const tabId = tab.id;
   const prefs = await chrome.storage.local.get({
-    delay: 600,
-    offset: 50,
-    quality: 0.95
+    'delay': 600,
+    'offset': 50,
+    'quality': 0.95,
+    'format-canvas': 'png'
   });
   prefs.delay = Math.max(prefs.delay, 1000 / chrome.tabs.MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND || 2);
 
@@ -328,9 +338,10 @@ async function matrix(tab) {
       );
     }
   }
+
   chrome.action.setBadgeText({tabId, text: '...'});
   const blob = await canvas.convertToBlob({
-    type: 'image/png',
+    type: 'image/' + prefs['format-canvas'],
     quality: prefs.quality
   });
   chrome.action.setBadgeText({tabId, text: ''});
@@ -406,12 +417,14 @@ async function capturewithdebugger(options, tab) {
   await chrome.debugger.attach(target, '1.3');
 
   const prefs = await chrome.storage.local.get({
-    format: 'png'
+    format: 'png',
+    quality: 0.95
   });
 
   try {
     const result = await chrome.debugger.sendCommand(target, 'Page.captureScreenshot', {
       format: prefs.format,
+      quality: parseInt(prefs.quality * 100),
       ...options
     });
     if (!result) {

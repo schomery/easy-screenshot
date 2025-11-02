@@ -32,10 +32,11 @@ const ceds = async tab => {
   const info = r[0].result;
 
   const prefs = await chrome.storage.local.get({
-    delay: 600,
-    step: 2000,
-    quality: 0.95,
-    format: 'png'
+    'delay': 600,
+    'step': 2000,
+    'quality': 0.95,
+    'format': 'png',
+    'format-canvas': 'png'
   });
 
   const mx = Math.ceil(info.width / prefs.step) * Math.ceil(info.height / prefs.step);
@@ -54,6 +55,7 @@ const ceds = async tab => {
     await new Promise(resolve => setTimeout(resolve, prefs.delay));
     const result = await chrome.debugger.sendCommand(target, 'Page.captureScreenshot', {
       format: prefs.format,
+      quality: parseInt(prefs.quality * 100),
       captureBeyondViewport: true,
       clip: {
         ...rect,
@@ -98,7 +100,7 @@ const ceds = async tab => {
     chrome.debugger.detach(target);
 
     return canvas.convertToBlob({
-      type: 'image/' + prefs.format,
+      type: 'image/' + prefs['format-canvas'],
       quality: prefs.quality
     }).then(du => {
       chrome.action.setBadgeText({tabId, text: ''});

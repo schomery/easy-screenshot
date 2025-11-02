@@ -4,17 +4,21 @@ const toast = document.getElementById('toast');
 
 function restore() {
   chrome.storage.local.get({
-    delay: 600,
-    offset: 50,
-    mask: '[date] - [time] - [title]',
-    saveAs: false,
-    format: 'png'
+    'delay': 600,
+    'offset': 50,
+    'mask': '[date] - [time] - [title]',
+    'saveAs': false,
+    'format': 'png',
+    'format-canvas': 'png',
+    'quality': 0.95
   }, prefs => {
     document.getElementById('delay').value = prefs.delay;
     document.getElementById('offset').value = prefs.offset;
     document.getElementById('mask').value = prefs.mask;
     document.getElementById('saveAs').checked = prefs.saveAs;
     document.getElementById('format').value = prefs.format;
+    document.getElementById('format-canvas').value = prefs['format-canvas'];
+    document.getElementById('quality').value = prefs.quality;
   });
 }
 
@@ -24,13 +28,16 @@ function save() {
   const mask = document.getElementById('mask').value;
   const saveAs = document.getElementById('saveAs').checked;
   const format = document.getElementById('format').value;
+  const quality = Math.min(Math.max(document.getElementById('quality').valueAsNumber, 0.3), 1);
 
   chrome.storage.local.set({
     delay,
     offset,
     mask,
     saveAs,
-    format
+    format,
+    quality,
+    'format-canvas': document.getElementById('format-canvas').value
   }, () => {
     toast.textContent = 'Options saved.';
     setTimeout(() => toast.textContent = '', 750);
